@@ -1,0 +1,180 @@
+#ifndef H8_REGISTERS_H
+#define H8_REGISTERS_H
+
+#include "types.h"
+
+/**
+ * FLMCR1 is a register that makes the flash memory enter the programming mode,
+ * programming-verifying mode, erasing mode, or erasing-verifying mode.
+ * Mapped to 0xF020.
+ */
+typedef union
+{
+  struct
+  {
+    /** Program */
+    h8_u8 p : 1;
+
+    /** Erase */
+    h8_u8 e : 1;
+
+    /** Program-Verify */
+    h8_u8 pv : 1;
+
+    /** Erase-Verify */
+    h8_u8 ev : 1;
+
+    /** Program Setup */
+    h8_u8 psu : 1;
+
+    /** Erase Setup */
+    h8_u8 esu : 1;
+
+    /** Software Write Enable */
+    h8_u8 swe : 1;
+
+    /** Reserved */
+    h8_u8 r : 1;
+  } flags;
+  h8_byte_t raw;
+} h8_flmcr1_t;
+
+typedef union
+{
+  H8_BITFIELD_2
+  (
+    h8_u8 cks : 4,
+    h8_u8 reserved : 4
+  ) flags;
+  h8_byte_t raw;
+} h8_tmwd_t;
+
+typedef union
+{
+  H8_BITFIELD_8
+  (
+    h8_u8 wrst : 1,
+    h8_u8 b0wi : 1,
+    h8_u8 wdon : 1,
+    h8_u8 b2wi : 1,
+    h8_u8 tcsrwe : 1,
+    h8_u8 b4wi : 1,
+    h8_u8 tcwe : 1,
+    h8_u8 b6wi : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tcsrwd1_t;
+
+typedef struct
+{
+  h8_tmwd_t tmwd;
+  h8_tcsrwd1_t tcsrwd1;
+  h8_byte_t tcsrwd2;
+  h8_byte_t tcwd;
+} h8_wdt_t;
+
+
+/** 15.3.3 SS Mode Register (SSMR) */
+typedef union h8_ssmr_t
+{
+  struct
+  {
+    /** Transfer clock rate select 0 */
+    h8_u8 cks0 : 1;
+
+    /** Transfer clock rate select 1 */
+    h8_u8 cks1 : 1;
+
+    /** Transfer clock rate select 2 */
+    h8_u8 cks2 : 1;
+
+    h8_u8 reserved1 : 1;
+    h8_u8 reserved2 : 1;
+
+    /** Clock Phase Select */
+    h8_u8 cphs : 1;
+
+    /** Clock Polarity Select */
+    h8_u8 cpos : 1;
+
+    /** MSB-First/LSB-First Select */
+    h8_u8 mls : 1;
+  } flags;
+  h8_byte_t raw;
+} h8_ssmr_t;
+
+typedef union
+{
+  H8_BITFIELD_8
+  (
+    h8_u8 ceie : 1,
+    h8_u8 rie : 1,
+    h8_u8 tie : 1,
+    h8_u8 teie : 1,
+    h8_u8 reserved : 1,
+    h8_u8 rsstp : 1,
+    h8_u8 re : 1,
+    h8_u8 te : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_sser_t;
+
+typedef union h8_sssr_t
+{
+  H8_BITFIELD_8
+  (
+    /** Conflict Error Flag */
+    h8_u8 ce : 1,
+
+    /** Receive Data Register Full */
+    h8_u8 rdrf : 1,
+
+    /** Transmit Data Empty */
+    h8_u8 tdre : 1,
+
+    /** Transmit End */
+    h8_u8 tend : 1,
+
+    h8_u8 reserved1 : 1,
+    h8_u8 reserved2 : 1,
+
+    /** Overrun Error Flag */
+    h8_u8 orer : 1,
+
+    h8_u8 reserved3 : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_sssr_t;
+
+/** @todo Where is SSTRSR? */
+typedef struct
+{
+  h8_byte_t sscrh;
+  h8_byte_t sscrl;
+  h8_ssmr_t ssmr;
+  h8_sser_t sser;
+  h8_sssr_t sssr;
+  h8_byte_t unused[4];
+  h8_byte_t ssrdr;
+  h8_byte_t unused2;
+  h8_byte_t sstdr;
+  h8_byte_t unused3[4];
+} h8_ssu_t;
+
+/** @todo Timer W */
+typedef struct
+{
+  h8_byte_t tmrw;
+  h8_byte_t tcrw;
+  h8_byte_t tierw;
+  h8_byte_t tsrw;
+  h8_byte_t tior0;
+  h8_byte_t tior1;
+  h8_word_be_t tcnt;
+  h8_word_be_t gra;
+  h8_word_be_t grb;
+  h8_word_be_t grc;
+  h8_word_be_t grd;
+} h8_tw_t;
+
+#endif
