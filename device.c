@@ -34,7 +34,7 @@ static const h8_system_preset_t h8_systems[] =
   {
     "NTR-031",
     H8_SYSTEM_NTR_031,
-    { 0x64b40d8d, 0 /* todo: later crc32 */, 0 },
+    { 0x64b40d8d, 0x9321792f, 0 },
     {
       { 1, H8_DEVICE_SPI_BUS, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_3, NULL, NULL },
 
