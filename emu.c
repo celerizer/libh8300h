@@ -891,24 +891,6 @@ H8_NOT_OP(b, h8_byte_t)
 H8_NOT_OP(w, h8_word_t)
 H8_NOT_OP(l, h8_long_t)
 
-#define H8_STC_OP(name, type) \
-void stc##name(h8_system_t *system, type *dst) \
-{ \
-  dst->u = system->cpu.ccr.raw.u; \
-}
-H8_STC_OP(b, h8_byte_t)
-H8_STC_OP(w, h8_word_t)
-H8_STC_OP(l, h8_long_t)
-
-#define H8_LDC_OP(name, type) \
-void ldc##name(h8_system_t *system, const type src) \
-{ \
-  system->cpu.ccr.raw.u = src.u; \
-}
-H8_LDC_OP(b, h8_byte_t)
-H8_LDC_OP(w, h8_word_t)
-H8_LDC_OP(l, h8_long_t)
-
 #define H8_NEG_OP(name, type) \
 void neg##name(h8_system_t *system, type *src) \
 { \
@@ -1156,7 +1138,7 @@ H8_OP(op01)
 H8_OP(op02)
 {
   /** STC CCR, Rd */
-  stcb(system, rd_b(system, system->dbus.bl));
+  *rd_b(system, system->dbus.bl) = system->cpu.ccr.raw;
 }
 
 H8_OP(op03)
