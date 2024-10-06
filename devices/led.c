@@ -1,4 +1,4 @@
-#include "dma.h"
+#include "../dma.h"
 #include "led.h"
 
 static const char *name = "LED device";

@@ -1,5 +1,5 @@
 #include "buttons.h"
-#include "dma.h"
+#include "../dma.h"
 
 static const char *name_1 = "1-button input device";
 static const char *name_3 = "3-button input device";

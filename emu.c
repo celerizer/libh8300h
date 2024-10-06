@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "emu.h"
 #include "system.h"
 
 #define H8_ERROR(a) \
@@ -2313,7 +2312,7 @@ void h8_run(h8_system_t *system);
 
 #include <stdlib.h>
 
-#define H8_TEST_FAIL(a) { printf("Test failed in %s on line %u.", \
+#define H8_TEST_FAIL(a) { printf("Test failed in %s on line %u.\n", \
   __FILE__, \
   __LINE__); \
   exit(a); }
