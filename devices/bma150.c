@@ -9,6 +9,7 @@ static const h8_device_id type = H8_DEVICE_BMA150;
 typedef struct
 {
   h8_byte_t data[0x80];
+
   union
   {
     H8_BITFIELD_2
@@ -18,22 +19,34 @@ typedef struct
     ) parts;
     h8_byte_t raw;
   } state;
+
+  /* ROM tries to read immediately after sending control byte, when it should
+   * send a don't care data byte first. This flag is a hack to keep track.
+   * Not sure if this is correct behavior, but it seems like it should only
+   * read bytes 0 and 1 on boot, while without this check also reads 2 */
   h8_bool read_next;
+
+  h8_bool selected;
 } h8_bma150_t;
 
 #define H8_BMA150_WRITING 0
 #define H8_BMA150_READING 1
+
+void h8_bma150_select_pin(h8_device_t *device, h8_bool on)
+{
+  h8_bma150_t *bma = device->device;
+
+  bma->selected = !on;
+}
 
 /** 4.1.1 Four-wire SPI interface - Figure 7 */
 void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_bma150_t *bma = device->device;
 
-  /* ROM tries to read immediately after sending control byte, when it should
-   * send a don't care data byte first. This flag is a hack to keep track.
-   * Not sure if this is correct behavior, but it seems like it should only
-   * read bytes 0 and 1 on boot, while without this check also reads 2 */
-  if (bma->read_next)
+  if (!bma->selected)
+    return;
+  else if (bma->read_next)
     bma->read_next = FALSE;
   else if (bma->state.parts.mode == H8_BMA150_READING)
     *dst = bma->data[bma->state.parts.addr];
@@ -43,6 +56,9 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
 void h8_bma150_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_bma150_t *bma = device->device;
+
+  if (!bma->selected)
+    return;
 
   bma->read_next = FALSE;
 

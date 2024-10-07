@@ -7,7 +7,26 @@ static const h8_device_id type = H8_DEVICE_LCD;
 typedef struct
 {
   h8_u8 vram[128 * 64];
+  h8_bool selected;
+  h8_bool mode;
 } h8_lcd_t;
+
+#define H8_LCD_MODE_CMD 0
+#define H8_LCD_MODE_DATA 1
+
+void h8_lcd_select_pin(h8_device_t *device, const h8_bool on)
+{
+  h8_lcd_t *m_lcd = device->device;
+
+  m_lcd->selected = !on;
+}
+
+void h8_lcd_mode_pin(h8_device_t *device, const h8_bool on)
+{
+  h8_lcd_t *m_lcd = device->device;
+
+  m_lcd->mode = on;
+}
 
 void h8_lcd_read(h8_device_t *device, h8_byte_t *dst)
 {
