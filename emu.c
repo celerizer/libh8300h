@@ -145,11 +145,13 @@ H8_OUT(pdr1o)
         !(system->devices[i].select & value.u))
     {
       system->ssu_device = &system->devices[i];
+      printf("Using %s as port 1 device\n", system->devices[i].name);
       *byte = value;
       return;
     }
   }
   system->ssu_device = NULL;
+  printf("Couldn't find port 1 device for %u\n", value.u);
   *byte = value;
 }
 
@@ -226,6 +228,7 @@ H8_OUT(pdrbo)
 
 H8_IN(sssri)
 {
+  system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
   *byte = system->vmem.parts.io1.ssu.sssr.raw;
 }
 
@@ -1118,8 +1121,8 @@ H8_OP(op01)
     }
     break;
   case 0x80:
-    /** @todo SLEEP */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    /** SLEEP */
+    system->sleep = TRUE;
     break;
   case 0xC0:
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)

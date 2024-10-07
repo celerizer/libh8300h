@@ -3,6 +3,7 @@
 #include "devices/buttons.h"
 #include "devices/eeprom.h"
 #include "devices/factory_control.h"
+#include "devices/lcd.h"
 #include "devices/led.h"
 #include "system.h"
 #include "types.h"
@@ -55,7 +56,6 @@ static const h8_system_preset_t h8_systems[] =
     { 0xd4a05446, 0 },
     {
       { 1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_0, NULL, NULL /* SSU select */ },
-      { 1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_1, NULL, NULL /* 0=cmd 1=data */ },
 
       { 2, H8_DEVICE_EEPROM_64K, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_2, h8_eeprom_read, h8_eeprom_write },
 
@@ -99,7 +99,7 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
       device->init = h8_factory_control_init;
       break;
     case H8_DEVICE_LCD:
-      device->init = NULL; /** @todo */
+      device->init = h8_lcd_init;
       break;
     case H8_DEVICE_LED:
       device->init = h8_led_init;

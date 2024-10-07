@@ -262,15 +262,14 @@ typedef struct h8_system_t
 
   h8_device_t devices[H8_DEVICES_MAX];
 
-  /**
-   * The number of devices initialized within `devices`
-   */
+  /** The number of devices initialized within `devices` */
   unsigned device_count;
 
-  /**
-   * A pointer to the device the SSU is currently interacting with
-   */
+  /** A pointer to the device the SSU is currently interacting with */
   h8_device_t *ssu_device;
+
+  /** Whether or not SLEEP mode is currently active */
+  h8_bool sleep;
 
 #if H8_PROFILING
   unsigned instructions;
