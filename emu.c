@@ -1153,6 +1153,7 @@ H8_OP(op01)
     break;
   case 0x80:
     /** SLEEP */
+    /** @todo make this actually do something */
     system->sleep = TRUE;
     break;
   case 0xC0:
@@ -1605,12 +1606,17 @@ H8_OP(op52)
   *rd_l(system, system->dbus.bl) = mulxu_w(*rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bl));
 }
 
-/** @todo Does SP assume ER7? Compiled command is 54 70 */
 H8_OP(op54)
 {
   /** RTS */
-  system->cpu.pc = h8_read_w(system, system->cpu.regs[7].er.u).u;
-  system->cpu.regs[7].er.u += 2;
+  if (system->dbus.b.u == 0x70)
+  {
+    system->cpu.pc = h8_read_w(system, system->cpu.regs[7].er.u).u;
+    system->cpu.regs[7].er.u += 2;
+  }
+  else
+    /** @todo What does this do on HW? objdump says it's invalid */
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
 
 H8_OP(op55)
@@ -2321,11 +2327,13 @@ void h8_step(h8_system_t *system)
 {
   H8_OP_T function;
 
-  if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1)
+  /** @todo While unusual, executing out of RAM is not illegal */
+  if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1 ||
+      system->cpu.pc > 0xF020 || system->cpu.pc < 0x0050)
     H8_ERROR(H8_DEBUG_BAD_PC)
 
-  /*if (system->cpu.pc == 0x336 || system->cpu.pc == 0x350)
-    system->cpu.pc += 4;*/
+  if (system->cpu.pc == 0x336 || system->cpu.pc == 0x350)
+    system->cpu.pc += 4;
 
   h8_fetch(system);
 
