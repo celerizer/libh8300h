@@ -851,6 +851,36 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   *dst = result;
 }
 
+h8_word_t mulxu_b(h8_byte_t src, h8_byte_t dst)
+{
+  h8_word_t result;
+  result.u = src.u * dst.u;
+  return result;
+}
+
+h8_long_t mulxu_w(h8_word_t src, h8_word_t dst)
+{
+  h8_long_t result;
+  result.u = src.u * dst.u;
+  return result;
+}
+
+h8_word_t mulxs_b(h8_system_t *system, h8_byte_t src, h8_byte_t dst)
+{
+  h8_word_t result;
+  result.i = src.i * dst.i;
+  ccr_zn(system, result.i);
+  return result;
+}
+
+h8_long_t mulxs_w(h8_system_t *system, h8_word_t src, h8_word_t dst)
+{
+  h8_long_t result;
+  result.i = src.i * dst.i;
+  ccr_zn(system, result.i);
+  return result;
+}
+
 #define H8_AND_OP(name, type) \
 type and##name(h8_system_t *system, type dst, const type src) \
 { \
@@ -898,6 +928,7 @@ H8_NOT_OP(l, h8_long_t)
 void neg##name(h8_system_t *system, type *src) \
 { \
   src->i = 0 - src->i; \
+  ccr_zn(system, src->i); \
   /** @todo CCR */ \
 }
 H8_NEG_OP(b, h8_byte_t)
@@ -1125,7 +1156,20 @@ H8_OP(op01)
     system->sleep = TRUE;
     break;
   case 0xC0:
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    h8_fetch(system);
+    switch (system->dbus.a.u)
+    {
+    case 0x50:
+      /** MULXS.B Rs, Rd */
+      *rd_w(system, system->dbus.bl) = mulxs_b(system, *rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bl));
+      break;
+    case 0x52:
+      /** MULXS.W Rs, ERd */
+      *rd_l(system, system->dbus.bl) = mulxs_w(system, *rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bl));
+      break;
+    default:
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    }
     break;
   case 0xD0:
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
@@ -1547,6 +1591,18 @@ H8_OP(op4f)
   /** BLE d:8 */
   if (system->cpu.ccr.flags.z || (system->cpu.ccr.flags.n ^ system->cpu.ccr.flags.v))
     system->cpu.pc += system->dbus.b.i;
+}
+
+H8_OP(op50)
+{
+  /** MULXU.B Rs, Rd */
+  *rd_w(system, system->dbus.bl) = mulxu_b(*rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bl));
+}
+
+H8_OP(op52)
+{
+  /** MULXU.W Rs, ERd */
+  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bl));
 }
 
 /** @todo Does SP assume ER7? Compiled command is 54 70 */
@@ -2237,7 +2293,7 @@ static H8_OP_T funcs[256] =
   op38, op39, op3a, op3b, op3c, op3d, op3e, op3f,
   op40, op41, op42, op43, op44, op45, op46, op47,
   op48, op49, op4a, op4b, op4c, op4d, op4e, op4f,
-  NULL, NULL, NULL, NULL, op54, op55, NULL, NULL,
+  op50, NULL, op52, NULL, op54, op55, NULL, NULL,
   op58, op59, op5a, op5b, op5c, op5d, op5e, NULL,
   op60, op61, op62, op63, op64, op65, op66, op67,
   op68, op69, op6a, op6b, op6c, op6d, op6e, op6f,
