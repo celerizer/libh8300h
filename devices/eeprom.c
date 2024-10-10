@@ -10,33 +10,79 @@ enum
 {
   H8_EEPROM_INVALID = 0,
 
-  H8_EEPROM_UNKNOWN_1,
+  /**
+   * Write Status Register
+   * If WEL is on (?), write next byte to status register
+   * 2 byte payload
+   */
+  H8_EEPROM_WRSR,
+
+  /**
+   * Write
+   * If WEL is on, take an address then write the next byte to it
+   * 4 byte payload
+   */
   H8_EEPROM_WRITE,
+
+  /**
+   * Read
+   * Take an address, then read from it for every "don't care" byte afterwards,
+   * incrementing the address
+   * 4+ byte payload
+   */
   H8_EEPROM_READ,
-  H8_EEPROM_UNKNOWN_2,
-  H8_EEPROM_UNKNOWN_3,
-  H8_EEPROM_UNKNOWN_4,
+
+  /**
+   * Write Disable
+   * Set the WEL to zero, diabling writes
+   * 1 byte payload
+   */
+  H8_EEPROM_WRDI,
+
+  /**
+   * Read Status Register
+   * Return the status register after the next "don't care" byte?
+   * 2 byte payload
+   */
+  H8_EEPROM_RDSR,
+
+  /**
+   * Write Enable
+   * Set the WEL to one, enabling writes
+   * 1 byte payload
+   */
+  H8_EEPROM_WREN,
 
   H8_EEPROM_SIZE
 };
-
-typedef union
-{
-  struct
-  {
-    h8_byte_t command;
-    h8_word_be_t address;
-    h8_byte_t value;
-  } parts;
-  h8_byte_t raw[4];
-} h8_eeprom_cmd_t;
 
 typedef struct
 {
   h8_byte_t *data;
   unsigned length;
-  h8_eeprom_cmd_t rx_buf;
-  h8_byte_t rx_pos;
+  h8_u8 command;
+  h8_word_t address;
+  h8_u8 position;
+  union
+  {
+    H8_BITFIELD_5
+    (
+      /** Write In Progress (unimplemented) */
+      h8_u8 wip : 1,
+
+      /** Write Enable Latch */
+      h8_u8 wel : 1,
+
+      /** Block Protect bits (unimplemented) */
+      h8_u8 bp : 2,
+
+      h8_u8 reserved : 3,
+
+      /** Status Register Write Disable */
+      h8_u8 srwd : 1
+    ) flags;
+    h8_byte_t raw;
+  } status;
 } h8_eeprom_t;
 
 h8_bool h8_eeprom_serialize(const h8_device_t *device, h8_u8 **data,
@@ -52,13 +98,7 @@ h8_bool h8_eeprom_serialize(const h8_device_t *device, h8_u8 **data,
     *data += m_eeprom->length;
     *size += m_eeprom->length;
 
-    memcpy(*data, &m_eeprom->rx_buf, sizeof(m_eeprom->rx_buf));
-    *data += sizeof(m_eeprom->rx_buf);
-    *size += sizeof(m_eeprom->rx_buf);
-
-    memcpy(*data, &m_eeprom->rx_pos, sizeof(m_eeprom->rx_pos));
-    *data += sizeof(m_eeprom->rx_pos);
-    *size += sizeof(m_eeprom->rx_pos);
+    /** @todo */
 
     return TRUE;
   }
@@ -73,22 +113,16 @@ h8_bool h8_eeprom_deserialize(h8_device_t *device, const h8_u8 **data,
   {
     h8_eeprom_t *m_eeprom = (h8_eeprom_t*)device->device;
 
-    if (*size < m_eeprom->length +
+    /*if (*size < m_eeprom->length +
         sizeof(m_eeprom->rx_buf) +
         sizeof(m_eeprom->rx_pos))
-      return FALSE;
+      return FALSE;*/
 
     memcpy(m_eeprom->data, *data, m_eeprom->length);
     *data += m_eeprom->length;
     *size += m_eeprom->length;
 
-    memcpy(&m_eeprom->rx_buf, *data, sizeof(m_eeprom->rx_buf));
-    *data += sizeof(m_eeprom->rx_buf);
-    *size += sizeof(m_eeprom->rx_buf);
-
-    memcpy(&m_eeprom->rx_pos, *data, sizeof(m_eeprom->rx_pos));
-    *data += sizeof(m_eeprom->rx_pos);
-    *size += sizeof(m_eeprom->rx_pos);
+    /** @todo */
 
     return TRUE;
   }
@@ -100,27 +134,100 @@ void h8_eeprom_free(h8_device_t *device)
     h8_dma_free(((h8_eeprom_t*)device->device)->data);
 }
 
+/**
+ * Notes:
+ * ntr-032 sends cmd 05, then reads 16 bytes from 0x2470 on boot. address is
+ * incremented by sending a 0xff d/c byte
+ * 05 FF
+ * 03 24 70 FF FF FF FF ...
+ */
+
 void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
-  if (eeprom->rx_buf.parts.command.u == H8_EEPROM_READ)
+  switch (eeprom->command)
   {
-    h8_u16 address = (h8_u16)((eeprom->rx_buf.parts.address.h.u << 8) |
-                      eeprom->rx_buf.parts.address.l.u);
-
-    *dst = eeprom->data[address & (eeprom->length - 1)];
+  case H8_EEPROM_READ:
+    *dst = eeprom->data[eeprom->address.u];
+    break;
+  case H8_EEPROM_RDSR:
+    *dst = eeprom->status.raw;
+    break;
   }
-  else
-    dst->u = 0;
 }
+
+/**
+ * NTR-027
+ * 06 02 1B 88 00 05 r FF r ...
+ *          A7
+ */
 
 void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
-  eeprom->rx_buf.raw[eeprom->rx_pos.u] = value;
-  eeprom->rx_pos.u++;
+  if (eeprom->position == 0)
+  {
+    eeprom->command = value.u;
+
+    /* Handle 1-byte payloads */
+    if (eeprom->command == H8_EEPROM_WREN)
+    {
+      eeprom->status.flags.wel = 1;
+      eeprom->position = 0;
+      return;
+    }
+    else if (eeprom->command == H8_EEPROM_WRDI)
+    {
+      eeprom->status.flags.wel = 0;
+      eeprom->position = 0;
+      return;
+    }
+  }
+  else if (eeprom->position == 1)
+  {
+    /* Handle first byte of address, or value in two-byte payloads */
+    switch (eeprom->command)
+    {
+    case H8_EEPROM_WRITE:
+    case H8_EEPROM_READ:
+      eeprom->address.h = value;
+      break;
+    case H8_EEPROM_RDSR:
+      eeprom->position = 0;
+      return;
+    case H8_EEPROM_WRSR:
+      if (eeprom->status.flags.wel)
+        eeprom->status.raw = value;
+      eeprom->position = 0;
+      return;
+    }
+  }
+  else if (eeprom->position == 2)
+    eeprom->address.l = value;
+  else
+  {
+    /* Handle 4 byte payload */
+    if (eeprom->command == H8_EEPROM_WRITE)
+    {
+      if (eeprom->status.flags.wel)
+        eeprom->data[eeprom->address.u] = value;
+      eeprom->position = 0;
+      return;
+    }
+    /* Start new payload if next byte is a valid command */
+    else if (value.u < H8_EEPROM_SIZE && value.u != H8_EEPROM_INVALID)
+    {
+      eeprom->position = 0;
+      h8_eeprom_write(device, dst, value);
+      return;
+    }
+    /* If reading, ensure address only increments after receiving first d/c */
+    else if (eeprom->position != 3)
+      eeprom->address.u++;
+  }
+  eeprom->position++;
 
   *dst = value;
 }
@@ -138,6 +245,8 @@ void h8_eeprom_init(h8_device_t *device, unsigned type)
     device->name = type == H8_DEVICE_EEPROM_8K ? name_8k : name_64k;
     device->type = type;
     device->device = eeprom;
+    device->data = eeprom->data;
+    device->size = eeprom->length;
 
     device->read = h8_eeprom_read;
     device->write = h8_eeprom_write;

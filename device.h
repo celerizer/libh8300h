@@ -106,12 +106,17 @@ typedef h8_bool H8D_OP_LOAD_T(struct h8_device_t*, const h8_u8**, unsigned*);
 typedef struct h8_device_t
 {
   void *device;
-  unsigned size;
+
   h8_device_id type;
   const char *name;
   h8_hookup_port port;
   h8_hookup_select select;
 
+  /** A pointer to general device data without any additional state */
+  void *data;
+
+  /** The size, in bytes, of what `data` points to */
+  unsigned size;
 
   H8D_OP_INIT_T *init;
 
