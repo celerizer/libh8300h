@@ -1119,7 +1119,7 @@ H8_OP(op01)
       h8_byte_t sd = system->dbus.b;
 
       h8_fetch(system);
-      if (sd.h & B10000000)
+      if (sd.h & B1000)
         /** MOV.L ERs, @(d:16, ERd) */
         rs_md_l(system, *rd_l(system, sd.l), erd16(system, sd.h, system->dbus.bits.i), movl);
       else
@@ -1140,7 +1140,7 @@ H8_OP(op01)
     switch (system->dbus.a.u)
     {
     case 0x69:
-      if (system->dbus.bl & B10000000)
+      if (system->dbus.bh & B1000)
         /** STC.W CCR, @ERd */
         h8_write_b(system, rd_w(system, system->dbus.bl)->u, system->cpu.ccr.raw);
       else
@@ -1241,7 +1241,7 @@ H8_OP(op0a)
     b.i = 1;
     rs_rd_b(system, b, rd_b(system, system->dbus.bl), addb);
   }
-  else if (system->dbus.bh & 0x8)
+  else if (system->dbus.bh & B1000)
     /** ADD.L ERs, ERd */
     rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), addl);
   else
@@ -1402,7 +1402,7 @@ H8_OP(op1a)
     b.i = 1;
     rs_rd_b(system, b, rd_b(system, system->dbus.bl), subb);
   }
-  else if (system->dbus.bh & 0x8)
+  else if (system->dbus.bh & B1000)
     /** SUB.L ERs, ERd */
     rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), subl);
   else
@@ -1896,7 +1896,7 @@ H8_OP(op6b)
 
 H8_OP(op6c)
 {
-  if (system->dbus.bh & 0x8)
+  if (system->dbus.bh & B1000)
     /** MOV.B Rs, @-ERd */
     rs_md_b(system, *rd_b(system, system->dbus.bl), erpd_b(system, system->dbus.bh), movb);
   else
@@ -1906,7 +1906,7 @@ H8_OP(op6c)
 
 H8_OP(op6d)
 {
-  if (system->dbus.bh & 0x8)
+  if (system->dbus.bh & B1000)
     /** MOV.W Rs, @-ERd */
     rs_md_w(system, *rd_w(system, system->dbus.bl), erpd_w(system, system->dbus.bh), movw);
   else
@@ -1919,7 +1919,7 @@ H8_OP(op6e)
   h8_instruction_t func = system->dbus;
 
   h8_fetch(system);
-  if (func.bh & 0x8)
+  if (func.bh & B1000)
     /** MOV.B Rs, @(d:16, ERd) */
     rs_md_b(system, *rd_b(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), movb);
   else
@@ -1962,7 +1962,7 @@ H8_OP(op73)
 
 H8_OP(op77)
 {
-  if (system->dbus.bh & B10000000)
+  if (system->dbus.bh & B1000)
     /** BILD #xx:3, Rd */
     bild(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
   else
@@ -2072,7 +2072,7 @@ H8_OP(op7d)
       rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bclr);
       break;
     case 0x7:
-      if (system->dbus.bh & 0x8)
+      if (system->dbus.bh & B1000)
         /** BIST #xx:3, @ERd */
         rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bist);
       else
@@ -2129,7 +2129,7 @@ H8_OP(op7e)
       H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
       break;
     case 0x7:
-      if (system->dbus.bh & 0x8)
+      if (system->dbus.bh & B1000)
         /** BILD #xx:3, @aa:8 */
         bild(system, h8_read_b(system, 0xFF00 | func.l.u), system->dbus.bh);
       else
@@ -2166,7 +2166,7 @@ H8_OP(op7f)
       rs_md_b(system, *rd_b(system, system->dbus.bh), aa8(func.l), bclr);
       break;
     case 0x7:
-      if (system->dbus.bh & 0x8)
+      if (system->dbus.bh & B1000)
         /** BIST #xx:3, @aa:8 */
         rs_md_b(system, *rd_b(system, system->dbus.bh), aa8(func.l), bist);
       else
@@ -2331,9 +2331,6 @@ void h8_step(h8_system_t *system)
   if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1 ||
       system->cpu.pc > 0xF020 || system->cpu.pc < 0x0050)
     H8_ERROR(H8_DEBUG_BAD_PC)
-
-  if (system->cpu.pc == 0x336 || system->cpu.pc == 0x350)
-    system->cpu.pc += 4;
 
   h8_fetch(system);
 
