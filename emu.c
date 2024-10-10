@@ -1111,8 +1111,12 @@ H8_OP(op01)
       break;
     }
     case 0x6D:
-      /** MOV.L ERs, @-ERd */
-      rs_md_l(system, *rd_l(system, system->dbus.bl), erpd_l(system, system->dbus.bh), movl);
+      if (system->dbus.bh & B1000)
+        /** MOV.L ERs, @-ERd */
+        rs_md_l(system, *rd_l(system, system->dbus.bl), erpd_l(system, system->dbus.bh), movl);
+      else
+        /** MOV.L @ERs+, ERd */
+        ms_rd_l(system, erpi_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), movl);
       break;
     case 0x6F:
     {
