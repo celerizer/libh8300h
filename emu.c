@@ -320,6 +320,13 @@ H8_OUT(sstdro)
  * ????
  */
 
+H8_IN(adsri)
+{
+  /** @todo A/DC simply assumes result is done when status is read */
+  system->vmem.parts.io2.adc.adsr.flags.adsf = 0;
+  *byte = system->vmem.parts.io2.adc.adsr.raw;
+}
+
 static H8_IN_T reg_ins[0x160] =
 {
   /* IO region 1 (0xF020) */
@@ -378,7 +385,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, adsri,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
