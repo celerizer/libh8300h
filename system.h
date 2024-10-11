@@ -217,7 +217,8 @@ typedef struct
 {
   h8_byte_t unimplemented1[0x30];
   h8_wdt_t wdt;
-  h8_byte_t unimplemented2[0x4C];
+  h8_adc_t adc;
+  h8_byte_t unimplemented2[0x48];
 } h8_io2_t;
 
 #define H8_MEMORY_REGION_IO1 0xF020

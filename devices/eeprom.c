@@ -161,6 +161,7 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
  * NTR-027
  * 06 02 1B 88 00 05 r FF r ...
  *          A7
+ * It repeats this 8 times then starts watching A/D converter?
  */
 
 void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)

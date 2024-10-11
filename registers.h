@@ -177,4 +177,69 @@ typedef struct
   h8_word_be_t grd;
 } h8_tw_t;
 
+/**
+ * 17.3.1 A/D Result Register (ADRR)
+ * Mapped to FFBC
+ */
+typedef union h8_adrr_t
+{
+  H8_BITFIELD_2
+  (
+    h8_u16 data : 10,
+    h8_u16 reserved : 6
+  ) flags;
+  h8_word_be_t raw;
+} h8_adrr_t;
+
+/**
+ * 7.3.2 A/D Mode Register (AMR)
+ * Mapped to FFBE
+ */
+typedef union
+{
+  H8_BITFIELD_4
+  (
+    /** Channel Select */
+    h8_u8 ch : 4,
+
+    /** Clock Select (unimplemented) */
+    h8_u8 cks : 2,
+
+    /** External Trigger Select */
+    h8_u8 trge : 1,
+
+    h8_u8 reserved : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_amr_t;
+
+/**
+ * 7.3.3 A/D Start Register (ADSR)
+ * Mapped to FFBF
+ */
+typedef union
+{
+  H8_BITFIELD_3
+  (
+    h8_u8 reserved : 6,
+
+    /** Ladder Resistance Select */
+    h8_u8 lads : 1,
+
+    /**
+     * A/D Start/Finish? Set to 1 to start, then it sets itself to 0 when
+     * finished
+     */
+    h8_u8 adsf : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_adsr_t;
+
+typedef struct
+{
+  h8_adrr_t adrr;
+  h8_amr_t amr;
+  h8_adsr_t adsr;
+} h8_adc_t;
+
 #endif

@@ -2347,7 +2347,7 @@ void h8_step(h8_system_t *system)
     printf("UNDEFINED OPCODE!!! ");
     printf("%02X%02X at %04X\n", system->dbus.a.u, system->dbus.b.u, system->cpu.pc - 2);
     /* pootis breakpoint here */
-    return;
+    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
   }
 
   if (system->error_code)
