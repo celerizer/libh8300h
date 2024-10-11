@@ -128,6 +128,20 @@ static void exts_l(h8_system_t *system, h8_long_t *dst)
   system->cpu.ccr.flags.v = 0;
 }
 
+#define H8_SHL_OP(name, type, carry, direction, op) \
+void shl##direction##_##name(h8_system_t *system, type *dst) \
+{ \
+  system->cpu.ccr.flags.c = (dst->u & carry) ? 1 : 0; \
+  dst->u op 1; \
+  ccr_zn(system, dst->i); \
+}
+H8_SHL_OP(b, h8_byte_t, 0x80, l, <<=)
+H8_SHL_OP(w, h8_word_t, 0x8000, l, <<=)
+H8_SHL_OP(l, h8_long_t, 0x80000000, l, <<=)
+H8_SHL_OP(b, h8_byte_t, 0x01, r, >>=)
+H8_SHL_OP(w, h8_word_t, 0x0001, r, >>=)
+H8_SHL_OP(l, h8_long_t, 0x00000001, r, >>=)
+
 /**
  * Register IO functions
  */
@@ -1317,6 +1331,64 @@ H8_OP(op0e)
   addx(system, rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
 }
 
+H8_OP(op10)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** SHLL.B Rd */
+    shll_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** SHLL.W Rd */
+    shll_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** SHLL.L ERd */
+    shll_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** SHAL.B Rd */
+  case 0x9:
+    /** SHAL.W Rd */
+  case 0xB:
+    /** SHAL.L ERd */
+    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
+H8_OP(op11)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** SHLR.B Rd */
+    shlr_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** SHLR.W Rd */
+    shlr_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** SHLR.L ERd */
+    shlr_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** SHAR.B Rd */
+  case 0x9:
+    /** SHAR.W Rd */
+  case 0xB:
+    /** SHAR.L ERd */
+    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
 H8_OP(op14)
 {
   /** OR.B Rs, Rd */
@@ -2295,7 +2367,7 @@ static H8_OP_T funcs[256] =
 {
   op00, op01, op02, op03, op04, op05, op06, op07,
   op08, op09, op0a, op0b, op0c, op0d, op0e, NULL,
-  NULL, NULL, NULL, NULL, op14, op15, op16, op17,
+  op10, op11, NULL, NULL, op14, op15, op16, op17,
   op18, op19, op1a, op1b, op1c, op1d, NULL, NULL,
   op20, op21, op22, op23, op24, op25, op26, op27,
   op28, op29, op2a, op2b, op2c, op2d, op2e, op2f,
