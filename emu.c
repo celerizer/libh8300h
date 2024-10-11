@@ -2641,6 +2641,8 @@ void h8_test_division(void)
   l = divxu_w(&system, l, w);
   if (system.cpu.ccr.flags.z != 1)
     H8_TEST_FAIL(3)
+
+  printf("Division test passed!\n");
 }
 
 void h8_test_size(void)
