@@ -917,10 +917,13 @@ h8_long_t mulxs_w(h8_system_t *system, h8_word_t src, h8_word_t dst)
 
 h8_word_t divxu_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 {
-  h8_word_t result;
+  h8_word_t result = {0};
 
-  result.l.u = top.u / bottom.u;
-  result.h.u = top.u % bottom.u;
+  if (bottom.u != 0)
+  {
+    result.l.u = top.u / bottom.u;
+    result.h.u = top.u % bottom.u;
+  }
   system->cpu.ccr.flags.n = bottom.i < 0;
   system->cpu.ccr.flags.z = bottom.u == 0;
 
@@ -929,10 +932,13 @@ h8_word_t divxu_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 
 h8_long_t divxu_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 {
-  h8_long_t result;
+  h8_long_t result = {0};
 
-  result.l.u = top.u / bottom.u;
-  result.h.u = top.u % bottom.u;
+  if (bottom.u != 0)
+  {
+    result.l.u = top.u / bottom.u;
+    result.h.u = top.u % bottom.u;
+  }
   system->cpu.ccr.flags.n = bottom.i < 0;
   system->cpu.ccr.flags.z = bottom.u == 0;
 
@@ -941,10 +947,13 @@ h8_long_t divxu_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 
 h8_word_t divxs_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 {
-  h8_word_t result;
+  h8_word_t result = {0};
 
-  result.l.i = top.i / bottom.i;
-  result.h.i = top.i % bottom.i;
+  if (bottom.u != 0)
+  {
+    result.l.i = top.i / bottom.i;
+    result.h.i = top.i % bottom.i;
+  }
   system->cpu.ccr.flags.n = result.l.i < 0;
   system->cpu.ccr.flags.z = bottom.u == 0;
 
@@ -953,10 +962,13 @@ h8_word_t divxs_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 
 h8_long_t divxs_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 {
-  h8_long_t result;
+  h8_long_t result = {0};
 
-  result.l.i = top.i / bottom.i;
-  result.h.i = top.i % bottom.i;
+  if (bottom.u != 0)
+  {
+    result.l.i = top.i / bottom.i;
+    result.h.i = top.i % bottom.i;
+  }
   system->cpu.ccr.flags.n = result.l.i < 0;
   system->cpu.ccr.flags.z = bottom.u == 0;
 
@@ -2605,6 +2617,32 @@ void h8_test_bit_order(void)
   printf("Bit ordering test passed!\n");
 }
 
+void h8_test_division(void)
+{
+  h8_system_t system = {0};
+  h8_byte_t b;
+  h8_word_t w;
+  h8_long_t l;
+
+  w.u = 358;
+  b.u = 2;
+  w = divxu_b(&system, w, b);
+  if (w.l.u != 179 || w.h.u != 0)
+    H8_TEST_FAIL(1)
+
+  l.u = 1234567;
+  w.u = 890;
+  l = divxu_w(&system, l, w);
+  if (l.l.u != 1387 || l.h.u != 137)
+    H8_TEST_FAIL(2)
+
+  l.u = 999;
+  w.u = 0;
+  l = divxu_w(&system, l, w);
+  if (system.cpu.ccr.flags.z != 1)
+    H8_TEST_FAIL(3)
+}
+
 void h8_test_size(void)
 {
   h8_system_t system = {0};
@@ -2646,6 +2684,7 @@ void h8_test(void)
   h8_test_add();
   h8_test_bit_manip();
   h8_test_bit_order();
+  h8_test_division();
   h8_test_size();
   h8_test_sub();
 #endif
