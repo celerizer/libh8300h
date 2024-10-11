@@ -895,6 +895,54 @@ h8_long_t mulxs_w(h8_system_t *system, h8_word_t src, h8_word_t dst)
   return result;
 }
 
+h8_word_t divxu_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
+{
+  h8_word_t result;
+
+  result.l.u = top.u / bottom.u;
+  result.h.u = top.u % bottom.u;
+  system->cpu.ccr.flags.n = bottom.i < 0;
+  system->cpu.ccr.flags.z = bottom.u == 0;
+
+  return result;
+}
+
+h8_long_t divxu_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
+{
+  h8_long_t result;
+
+  result.l.u = top.u / bottom.u;
+  result.h.u = top.u % bottom.u;
+  system->cpu.ccr.flags.n = bottom.i < 0;
+  system->cpu.ccr.flags.z = bottom.u == 0;
+
+  return result;
+}
+
+h8_word_t divxs_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
+{
+  h8_word_t result;
+
+  result.l.i = top.i / bottom.i;
+  result.h.i = top.i % bottom.i;
+  system->cpu.ccr.flags.n = result.l.i < 0;
+  system->cpu.ccr.flags.z = bottom.u == 0;
+
+  return result;
+}
+
+h8_long_t divxs_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
+{
+  h8_long_t result;
+
+  result.l.i = top.i / bottom.i;
+  result.h.i = top.i % bottom.i;
+  system->cpu.ccr.flags.n = result.l.i < 0;
+  system->cpu.ccr.flags.z = bottom.u == 0;
+
+  return result;
+}
+
 #define H8_AND_OP(name, type) \
 type and##name(h8_system_t *system, type dst, const type src) \
 { \
@@ -1180,18 +1228,31 @@ H8_OP(op01)
     {
     case 0x50:
       /** MULXS.B Rs, Rd */
-      *rd_w(system, system->dbus.bl) = mulxs_b(system, *rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bl));
+      *rd_w(system, system->dbus.bl) = mulxs_b(system, *rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
       break;
     case 0x52:
       /** MULXS.W Rs, ERd */
-      *rd_l(system, system->dbus.bl) = mulxs_w(system, *rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bl));
+      *rd_l(system, system->dbus.bl) = mulxs_w(system, *rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
       break;
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
     }
     break;
   case 0xD0:
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    h8_fetch(system);
+    switch (system->dbus.a.u)
+    {
+    case 0x51:
+      /** DIVXS.B Rs, Rd */
+      *rd_w(system, system->dbus.bl) = divxs_b(system, *rd_w(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
+      break;
+    case 0x53:
+      /** DIVXS.W Rs, ERd */
+      *rd_l(system, system->dbus.bl) = divxs_w(system, *rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
+      break;
+    default:
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    }
     break;
   case 0xF0:
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
@@ -1673,13 +1734,25 @@ H8_OP(op4f)
 H8_OP(op50)
 {
   /** MULXU.B Rs, Rd */
-  *rd_w(system, system->dbus.bl) = mulxu_b(*rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bl));
+  *rd_w(system, system->dbus.bl) = mulxu_b(*rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
+}
+
+H8_OP(op51)
+{
+  /** DIVXU.B Rs, Rd */
+  *rd_w(system, system->dbus.bl) = divxu_b(system, *rd_w(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
 }
 
 H8_OP(op52)
 {
   /** MULXU.W Rs, ERd */
-  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bl));
+  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
+}
+
+H8_OP(op53)
+{
+  /** DIVXU.W Rs, ERd */
+  *rd_l(system, system->dbus.bl) = divxu_w(system, *rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
 }
 
 H8_OP(op54)
@@ -2375,7 +2448,7 @@ static H8_OP_T funcs[256] =
   op38, op39, op3a, op3b, op3c, op3d, op3e, op3f,
   op40, op41, op42, op43, op44, op45, op46, op47,
   op48, op49, op4a, op4b, op4c, op4d, op4e, op4f,
-  op50, NULL, op52, NULL, op54, op55, NULL, NULL,
+  op50, op51, op52, op53, op54, op55, NULL, NULL,
   op58, op59, op5a, op5b, op5c, op5d, op5e, NULL,
   op60, op61, op62, op63, op64, op65, op66, op67,
   op68, op69, op6a, op6b, op6c, op6d, op6e, op6f,
