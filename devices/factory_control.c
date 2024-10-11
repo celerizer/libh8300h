@@ -1,12 +1,18 @@
 #include "factory_control.h"
 
+static const char *name = "Factory control";
+static const unsigned type = H8_DEVICE_FACTORY_CONTROL;
+
 #define H8_FACTORY_CONTROL_TEST 0
 #define H8_FACTORY_CONTROL_NO_TEST 1
 
 void h8_factory_control_init(h8_device_t *device)
 {
-  /** @todo Stub, nothing is needed right now. */
-  H8_UNUSED(device);
+  if (device)
+  {
+    device->name = name;
+    device->type = type;
+  }
 }
 
 /** @todo Make the test option configurable */

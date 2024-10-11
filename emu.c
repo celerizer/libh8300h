@@ -128,8 +128,21 @@ static void exts_l(h8_system_t *system, h8_long_t *dst)
   system->cpu.ccr.flags.v = 0;
 }
 
+#define H8_SHAR_OP(name, type, carry) \
+static void shar_##name(h8_system_t *system, type *dst) \
+{ \
+  unsigned sign = dst->u & carry; \
+  system->cpu.ccr.flags.c = (dst->u & 1) ? 1 : 0; \
+  dst->u >>= 1; \
+  dst->u = sign | (dst->u & ~carry); \
+  ccr_zn(system, dst->i); \
+}
+H8_SHAR_OP(b, h8_byte_t, 0x80)
+H8_SHAR_OP(w, h8_word_t, 0x8000)
+H8_SHAR_OP(l, h8_long_t, 0x80000000)
+
 #define H8_SHL_OP(name, type, carry, direction, op) \
-void shl##direction##_##name(h8_system_t *system, type *dst) \
+static void shl##direction##_##name(h8_system_t *system, type *dst) \
 { \
   system->cpu.ccr.flags.c = (dst->u & carry) ? 1 : 0; \
   dst->u op 1; \
@@ -1439,11 +1452,15 @@ H8_OP(op11)
     break;
   case 0x8:
     /** SHAR.B Rd */
+    shar_b(system, rd_b(system, system->dbus.bl));
+    break;
   case 0x9:
     /** SHAR.W Rd */
+    shar_w(system, rd_w(system, system->dbus.bl));
+    break;
   case 0xB:
     /** SHAR.L ERd */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    shar_l(system, rd_l(system, system->dbus.bl));
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
