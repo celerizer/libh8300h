@@ -1505,11 +1505,15 @@ H8_OP(op10)
     break;
   case 0x8:
     /** SHAL.B Rd */
+    shal_b(system, rd_b(system, system->dbus.bl));
+    break;
   case 0x9:
     /** SHAL.W Rd */
+    shal_w(system, rd_w(system, system->dbus.bl));
+    break;
   case 0xB:
     /** SHAL.L ERd */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    shal_l(system, rd_l(system, system->dbus.bl));
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1543,6 +1547,72 @@ H8_OP(op11)
   case 0xB:
     /** SHAR.L ERd */
     shar_l(system, rd_l(system, system->dbus.bl));
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
+H8_OP(op12)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** ROTXL.B Rd */
+    rotxl_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** ROTXL.W Rd */
+    rotxl_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** ROTXL.L ERd */
+    rotxl_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** ROTL.B Rd */
+    rotl_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x9:
+    /** ROTL.W Rd */
+    rotl_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0xB:
+    /** ROTL.L ERd */
+    rotl_l(system, rd_l(system, system->dbus.bl));
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
+H8_OP(op13)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** ROTXR.B Rd */
+    rotxr_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** ROTXR.W Rd */
+    rotxr_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** ROTXR.L ERd */
+    rotxr_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** ROTR.B Rd */
+    rotr_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x9:
+    /** ROTR.W Rd */
+    rotr_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0xB:
+    /** ROTR.L ERd */
+    rotr_l(system, rd_l(system, system->dbus.bl));
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2541,7 +2611,7 @@ static H8_OP_T funcs[256] =
 {
   op00, op01, op02, op03, op04, op05, op06, op07,
   op08, op09, op0a, op0b, op0c, op0d, op0e, NULL,
-  op10, op11, NULL, NULL, op14, op15, op16, op17,
+  op10, op11, op12, op13, op14, op15, op16, op17,
   op18, op19, op1a, op1b, op1c, op1d, NULL, NULL,
   op20, op21, op22, op23, op24, op25, op26, op27,
   op28, op29, op2a, op2b, op2c, op2d, op2e, op2f,
