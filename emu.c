@@ -1805,6 +1805,18 @@ H8_OP(op1d)
   cmpw(system, *rd_w(system, system->dbus.bh), *rd_w(system, system->dbus.bl));
 }
 
+H8_OP(op1f)
+{
+  if (system->dbus.bh == 0x0)
+    /** @todo DAS.B Rd */
+    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+  else if (system->dbus.bh & B1000)
+    /** CMP.L ERs, ERd */
+    cmpl(system, *rd_l(system, system->dbus.bh), *rd_l(system, system->dbus.bl));
+  else
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+}
+
 #define OP2X(al, reg) \
 void op2##al(h8_system_t *system) \
 { \
@@ -2643,7 +2655,7 @@ static H8_OP_T funcs[256] =
   op00, op01, op02, op03, op04, op05, op06, op07,
   op08, op09, op0a, op0b, op0c, op0d, op0e, op0f,
   op10, op11, op12, op13, op14, op15, op16, op17,
-  op18, op19, op1a, op1b, op1c, op1d, NULL, NULL,
+  op18, op19, op1a, op1b, op1c, op1d, NULL, op1f,
   op20, op21, op22, op23, op24, op25, op26, op27,
   op28, op29, op2a, op2b, op2c, op2d, op2e, op2f,
   op30, op31, op32, op33, op34, op35, op36, op37,
