@@ -96,6 +96,25 @@ H8_SUB_OP(b, h8_byte_t, 4)
 H8_SUB_OP(w, h8_word_t, 12)
 H8_SUB_OP(l, h8_long_t, 28)
 
+static void daa_b(h8_system_t *system, h8_byte_t *dst)
+{
+  h8_u8 adjust = 0;
+  h8_bool carry_out = 0;
+
+  if ((dst->u & 0x0F) > 9 || system->cpu.ccr.flags.h)
+    adjust |= 0x06;
+  if (((dst->u & 0xF0) >> 4) > 9 || system->cpu.ccr.flags.c)
+  {
+    adjust |= 0x60;
+    carry_out = 1;
+  }
+  dst->u += adjust;
+
+  system->cpu.ccr.flags.c = carry_out;
+  system->cpu.ccr.flags.h = ((adjust & 0x06) != 0);
+  ccr_zn(system, dst->i);
+}
+
 static void extu_w(h8_system_t *system, h8_word_t *dst)
 {
   dst->h.u = 0;
@@ -1487,6 +1506,18 @@ H8_OP(op0e)
   addx(system, rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
 }
 
+H8_OP(op0f)
+{
+  if (system->dbus.bh == 0x0)
+    /** DAA.B Rd */
+    daa_b(system, rd_b(system, system->dbus.bl));
+  else if (system->dbus.bh & B1000)
+    /** MOV.L ERs, ERd */
+    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), movl);
+  else
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+}
+
 H8_OP(op10)
 {
   switch (system->dbus.bh)
@@ -2610,7 +2641,7 @@ void h8_init(h8_system_t *system)
 static H8_OP_T funcs[256] =
 {
   op00, op01, op02, op03, op04, op05, op06, op07,
-  op08, op09, op0a, op0b, op0c, op0d, op0e, NULL,
+  op08, op09, op0a, op0b, op0c, op0d, op0e, op0f,
   op10, op11, op12, op13, op14, op15, op16, op17,
   op18, op19, op1a, op1b, op1c, op1d, NULL, NULL,
   op20, op21, op22, op23, op24, op25, op26, op27,
