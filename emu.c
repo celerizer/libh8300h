@@ -150,7 +150,7 @@ static void exts_l(h8_system_t *system, h8_long_t *dst)
 #define H8_ROTL_OP(name, type, carry) \
 static void rotl_##name(h8_system_t *system, type *dst) \
 { \
-  unsigned msb = (dst->u & carry) ? 1 : 0; \
+  h8_bool msb = (dst->u & carry) ? 1 : 0; \
   dst->u <<= 1; \
   dst->u |= msb; \
   system->cpu.ccr.flags.c = msb; \
@@ -176,7 +176,7 @@ H8_ROTR_OP(l, h8_long_t, 0x80000000)
 #define H8_ROTXL_OP(name, type, carry) \
 static void rotxl_##name(h8_system_t *system, type *dst) \
 { \
-  unsigned msb = (dst->u & carry) ? 1 : 0; \
+  h8_bool msb = (dst->u & carry) ? 1 : 0; \
   dst->u <<= 1; \
   dst->u |= system->cpu.ccr.flags.c; \
   system->cpu.ccr.flags.c = msb; \
@@ -189,7 +189,7 @@ H8_ROTXL_OP(l, h8_long_t, 0x80000000)
 #define H8_ROTXR_OP(name, type, carry) \
 static void rotxr_##name(h8_system_t *system, type *dst) \
 { \
-  unsigned lsb = (dst->u & 1); \
+  h8_bool lsb = (dst->u & 1); \
   dst->u >>= 1; \
   dst->u |= (system->cpu.ccr.flags.c ? carry : 0); \
   system->cpu.ccr.flags.c = lsb; \
@@ -213,10 +213,11 @@ H8_SHAL_OP(l, h8_long_t, 0x80000000)
 #define H8_SHAR_OP(name, type, carry) \
 static void shar_##name(h8_system_t *system, type *dst) \
 { \
-  unsigned sign = dst->u & carry; \
+  type sign; \
+  sign.u = dst->u & carry; \
   system->cpu.ccr.flags.c = (dst->u & 1) ? 1 : 0; \
   dst->u >>= 1; \
-  dst->u = sign | (dst->u & ~carry); \
+  dst->u = sign.u | (dst->u & ~carry); \
   ccr_zn(system, dst->i); \
 }
 H8_SHAR_OP(b, h8_byte_t, 0x80)
