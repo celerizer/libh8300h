@@ -669,18 +669,18 @@ static h8_byte_t h8_read_b(h8_system_t *system, const unsigned address)
 }
 
 static void h8_write_b(h8_system_t *system, const unsigned address,
-                          const h8_byte_t value)
+                       const h8_byte_t value)
 {
   h8_byte_out(system, address, value);
 }
 
-static h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address)
+h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address)
 {
   return *(h8_byte_t*)h8_find(system, address);
 }
 
-static void h8_poke_b(h8_system_t *system, const unsigned address,
-                      const h8_byte_t val)
+void h8_poke_b(h8_system_t *system, const unsigned address,
+               const h8_byte_t val)
 {
   *(h8_byte_t*)h8_find(system, address) = val;
 }
@@ -707,7 +707,7 @@ static void h8_write_w(h8_system_t *system, unsigned address, h8_word_t val)
   h8_byte_out(system, address + 1, val.l);
 }
 
-static h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
+h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
 {
   h8_word_t w;
 
@@ -717,8 +717,8 @@ static h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
   return w;
 }
 
-static void h8_poke_w(h8_system_t *system, const unsigned address,
-                      const h8_word_t val)
+void h8_poke_w(h8_system_t *system, const unsigned address,
+               const h8_word_t val)
 {
   h8_poke_b(system, address, val.h);
   h8_poke_b(system, address + 1, val.l);
@@ -748,7 +748,7 @@ static void h8_write_l(h8_system_t *system, const unsigned address,
   h8_byte_out(system, address + 3, val.d);
 }
 
-static h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
+h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
 {
   h8_long_t l;
 
@@ -760,7 +760,7 @@ static h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
   return l;
 }
 
-static void h8_poke_l(h8_system_t *system, const unsigned address,
+void h8_poke_l(h8_system_t *system, const unsigned address,
                       const h8_long_t val)
 {
   h8_poke_b(system, address, val.a);
