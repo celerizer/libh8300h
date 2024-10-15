@@ -2826,7 +2826,11 @@ void h8_test_division(void)
 
 void h8_test_shift(void)
 {
+  h8_system_t system = {0};
   h8_byte_t b;
+  h8_word_t w;
+  h8_long_t l;
+
   b.u = 0x55;
   shal_b(&system, &b);
   if (b.u != 0xAA || system.cpu.ccr.flags.c != 0)
