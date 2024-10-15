@@ -2646,6 +2646,8 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b6wi = 1;
 
   system->vmem.parts.io2.adc.adsr.flags.reserved = B00111111;
+  /** @todo ; eeprom dump of 8 conversions, div by 8 */
+  system->vmem.parts.io2.adc.adrr.flags.data = 82;
 
   /* Jump to program entrypoint */
   system->cpu.pc = h8_read_w(system, 0).u;
@@ -2817,7 +2819,7 @@ void h8_test_division(void)
 
   l.u = 999;
   w.u = 0;
-  l = divxu_w(&system, l, w);
+  divxu_w(&system, l, w);
   if (system.cpu.ccr.flags.z != 1)
     H8_TEST_FAIL(3)
 
@@ -2960,7 +2962,7 @@ void h8_test_shift(void)
 
 void h8_test_size(void)
 {
-  h8_system_t system = {0};
+  h8_system_t system;
 
   if (sizeof(system.vmem.parts.io1) != 0xE0)
     H8_TEST_FAIL(1)
