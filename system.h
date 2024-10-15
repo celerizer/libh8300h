@@ -330,4 +330,19 @@ void h8_test(void);
 
 h8_bool h8_system_init(h8_system_t *system, const h8_system_id id);
 
+h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address);
+
+h8_word_t h8_peek_w(h8_system_t *system, const unsigned address);
+
+h8_long_t h8_peek_l(h8_system_t *system, const unsigned address);
+
+void h8_poke_b(h8_system_t *system, const unsigned address,
+               const h8_byte_t val);
+
+void h8_poke_w(h8_system_t *system, const unsigned address,
+               const h8_word_t val);
+
+void h8_poke_l(h8_system_t *system, const unsigned address,
+               const h8_long_t val);
+
 #endif

@@ -96,6 +96,25 @@ H8_SUB_OP(b, h8_byte_t, 4)
 H8_SUB_OP(w, h8_word_t, 12)
 H8_SUB_OP(l, h8_long_t, 28)
 
+static void daa_b(h8_system_t *system, h8_byte_t *dst)
+{
+  h8_u8 adjust = 0;
+  h8_bool carry_out = 0;
+
+  if ((dst->u & 0x0F) > 9 || system->cpu.ccr.flags.h)
+    adjust |= 0x06;
+  if (((dst->u & 0xF0) >> 4) > 9 || system->cpu.ccr.flags.c)
+  {
+    adjust |= 0x60;
+    carry_out = 1;
+  }
+  dst->u += adjust;
+
+  system->cpu.ccr.flags.c = carry_out;
+  system->cpu.ccr.flags.h = ((adjust & 0x06) != 0);
+  ccr_zn(system, dst->i);
+}
+
 static void extu_w(h8_system_t *system, h8_word_t *dst)
 {
   dst->h.u = 0;
@@ -128,13 +147,77 @@ static void exts_l(h8_system_t *system, h8_long_t *dst)
   system->cpu.ccr.flags.v = 0;
 }
 
+#define H8_ROTL_OP(name, type, carry) \
+static void rotl_##name(h8_system_t *system, type *dst) \
+{ \
+  h8_bool msb = (dst->u & carry) ? 1 : 0; \
+  dst->u <<= 1; \
+  dst->u |= msb; \
+  system->cpu.ccr.flags.c = msb; \
+  ccr_zn(system, dst->i); \
+}
+H8_ROTL_OP(b, h8_byte_t, 0x80)
+H8_ROTL_OP(w, h8_word_t, 0x8000)
+H8_ROTL_OP(l, h8_long_t, 0x80000000)
+
+#define H8_ROTR_OP(name, type, carry) \
+static void rotr_##name(h8_system_t *system, type *dst) \
+{ \
+  unsigned lsb = (dst->u & 1) ? carry : 0; \
+  system->cpu.ccr.flags.c = (dst->u & 1); \
+  dst->u >>= 1; \
+  dst->u |= lsb; \
+  ccr_zn(system, dst->i); \
+}
+H8_ROTR_OP(b, h8_byte_t, 0x80)
+H8_ROTR_OP(w, h8_word_t, 0x8000)
+H8_ROTR_OP(l, h8_long_t, 0x80000000)
+
+#define H8_ROTXL_OP(name, type, carry) \
+static void rotxl_##name(h8_system_t *system, type *dst) \
+{ \
+  h8_bool msb = (dst->u & carry) ? 1 : 0; \
+  dst->u <<= 1; \
+  dst->u |= system->cpu.ccr.flags.c; \
+  system->cpu.ccr.flags.c = msb; \
+  ccr_zn(system, dst->i); \
+}
+H8_ROTXL_OP(b, h8_byte_t, 0x80)
+H8_ROTXL_OP(w, h8_word_t, 0x8000)
+H8_ROTXL_OP(l, h8_long_t, 0x80000000)
+
+#define H8_ROTXR_OP(name, type, carry) \
+static void rotxr_##name(h8_system_t *system, type *dst) \
+{ \
+  h8_bool lsb = (dst->u & 1); \
+  dst->u >>= 1; \
+  dst->u |= (system->cpu.ccr.flags.c ? carry : 0); \
+  system->cpu.ccr.flags.c = lsb; \
+  ccr_zn(system, dst->i); \
+}
+H8_ROTXR_OP(b, h8_byte_t, 0x80)
+H8_ROTXR_OP(w, h8_word_t, 0x8000)
+H8_ROTXR_OP(l, h8_long_t, 0x80000000)
+
+#define H8_SHAL_OP(name, type, carry) \
+static void shal_##name(h8_system_t *system, type *dst) \
+{ \
+  system->cpu.ccr.flags.c = (dst->u & carry) ? 1 : 0; \
+  dst->u <<= 1; \
+  ccr_zn(system, dst->i); \
+}
+H8_SHAL_OP(b, h8_byte_t, 0x80)
+H8_SHAL_OP(w, h8_word_t, 0x8000)
+H8_SHAL_OP(l, h8_long_t, 0x80000000)
+
 #define H8_SHAR_OP(name, type, carry) \
 static void shar_##name(h8_system_t *system, type *dst) \
 { \
-  unsigned sign = dst->u & carry; \
+  type sign; \
+  sign.u = dst->u & carry; \
   system->cpu.ccr.flags.c = (dst->u & 1) ? 1 : 0; \
   dst->u >>= 1; \
-  dst->u = sign | (dst->u & ~carry); \
+  dst->u = sign.u | (dst->u & ~carry); \
   ccr_zn(system, dst->i); \
 }
 H8_SHAR_OP(b, h8_byte_t, 0x80)
@@ -587,18 +670,18 @@ static h8_byte_t h8_read_b(h8_system_t *system, const unsigned address)
 }
 
 static void h8_write_b(h8_system_t *system, const unsigned address,
-                          const h8_byte_t value)
+                       const h8_byte_t value)
 {
   h8_byte_out(system, address, value);
 }
 
-static h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address)
+h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address)
 {
   return *(h8_byte_t*)h8_find(system, address);
 }
 
-static void h8_poke_b(h8_system_t *system, const unsigned address,
-                      const h8_byte_t val)
+void h8_poke_b(h8_system_t *system, const unsigned address,
+               const h8_byte_t val)
 {
   *(h8_byte_t*)h8_find(system, address) = val;
 }
@@ -625,7 +708,7 @@ static void h8_write_w(h8_system_t *system, unsigned address, h8_word_t val)
   h8_byte_out(system, address + 1, val.l);
 }
 
-static h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
+h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
 {
   h8_word_t w;
 
@@ -635,8 +718,8 @@ static h8_word_t h8_peek_w(h8_system_t *system, const unsigned address)
   return w;
 }
 
-static void h8_poke_w(h8_system_t *system, const unsigned address,
-                      const h8_word_t val)
+void h8_poke_w(h8_system_t *system, const unsigned address,
+               const h8_word_t val)
 {
   h8_poke_b(system, address, val.h);
   h8_poke_b(system, address + 1, val.l);
@@ -666,7 +749,7 @@ static void h8_write_l(h8_system_t *system, const unsigned address,
   h8_byte_out(system, address + 3, val.d);
 }
 
-static h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
+h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
 {
   h8_long_t l;
 
@@ -678,7 +761,7 @@ static h8_long_t h8_peek_l(h8_system_t *system, const unsigned address)
   return l;
 }
 
-static void h8_poke_l(h8_system_t *system, const unsigned address,
+void h8_poke_l(h8_system_t *system, const unsigned address,
                       const h8_long_t val)
 {
   h8_poke_b(system, address, val.a);
@@ -774,13 +857,13 @@ static h8_aptr erpd_l(h8_system_t *system, unsigned ers)
 /** General register, accessed as an address with 16-bit displacement */
 static h8_aptr erd16(h8_system_t *system, unsigned ers, signed d)
 {
-  return rd_l(system, ers)->u + d;
+  return (h8_aptr)((h8_s32)(rd_l(system, ers)->u) + d);
 }
 
 /** General register, accessed as an address with 24-bit displacement */
 static h8_aptr erd24(h8_system_t *system, unsigned ers, signed d)
 {
-  return rd_l(system, ers)->u + d;
+  return (h8_aptr)((h8_s32)(rd_l(system, ers)->u) + d);
 }
 
 /** 8-bit absolute address */
@@ -917,11 +1000,11 @@ h8_long_t mulxs_w(h8_system_t *system, h8_word_t src, h8_word_t dst)
 
 h8_word_t divxu_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 {
-  h8_word_t result = {0};
+  h8_word_t result = top;
 
   if (bottom.u != 0)
   {
-    result.l.u = top.u / bottom.u;
+    result.l.u = (h8_u8)(top.u / bottom.u);
     result.h.u = top.u % bottom.u;
   }
   system->cpu.ccr.flags.n = bottom.i < 0;
@@ -932,11 +1015,11 @@ h8_word_t divxu_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 
 h8_long_t divxu_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 {
-  h8_long_t result = {0};
+  h8_long_t result = top;
 
   if (bottom.u != 0)
   {
-    result.l.u = top.u / bottom.u;
+    result.l.u = (h8_u16)(top.u / bottom.u);
     result.h.u = top.u % bottom.u;
   }
   system->cpu.ccr.flags.n = bottom.i < 0;
@@ -951,7 +1034,7 @@ h8_word_t divxs_b(h8_system_t *system, h8_word_t top, h8_byte_t bottom)
 
   if (bottom.u != 0)
   {
-    result.l.i = top.i / bottom.i;
+    result.l.i = (h8_s8)(top.i / bottom.i);
     result.h.i = top.i % bottom.i;
   }
   system->cpu.ccr.flags.n = result.l.i < 0;
@@ -966,7 +1049,7 @@ h8_long_t divxs_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 
   if (bottom.u != 0)
   {
-    result.l.i = top.i / bottom.i;
+    result.l.i = (h8_s16)(top.i / bottom.i);
     result.h.i = top.i % bottom.i;
   }
   system->cpu.ccr.flags.n = result.l.i < 0;
@@ -1426,12 +1509,12 @@ H8_OP(op0e)
 
 H8_OP(op0f)
 {
-  if (system->dbus.bh == 0)
-    /** @todo DAA.B */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+  if (system->dbus.bh == 0x0)
+    /** DAA.B Rd */
+    daa_b(system, rd_b(system, system->dbus.bl));
   else if (system->dbus.bh & B1000)
     /** MOV.L ERs, ERd */
-    rs_rd_l(system, *rd_l(system,system->dbus.bh), rd_l(system, system->dbus.bl), movl);
+    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), movl);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -1454,11 +1537,15 @@ H8_OP(op10)
     break;
   case 0x8:
     /** SHAL.B Rd */
+    shal_b(system, rd_b(system, system->dbus.bl));
+    break;
   case 0x9:
     /** SHAL.W Rd */
+    shal_w(system, rd_w(system, system->dbus.bl));
+    break;
   case 0xB:
     /** SHAL.L ERd */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    shal_l(system, rd_l(system, system->dbus.bl));
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1492,6 +1579,72 @@ H8_OP(op11)
   case 0xB:
     /** SHAR.L ERd */
     shar_l(system, rd_l(system, system->dbus.bl));
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
+H8_OP(op12)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** ROTXL.B Rd */
+    rotxl_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** ROTXL.W Rd */
+    rotxl_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** ROTXL.L ERd */
+    rotxl_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** ROTL.B Rd */
+    rotl_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x9:
+    /** ROTL.W Rd */
+    rotl_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0xB:
+    /** ROTL.L ERd */
+    rotl_l(system, rd_l(system, system->dbus.bl));
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
+}
+
+H8_OP(op13)
+{
+  switch (system->dbus.bh)
+  {
+  case 0x0:
+    /** ROTXR.B Rd */
+    rotxr_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x1:
+    /** ROTXR.W Rd */
+    rotxr_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0x3:
+    /** ROTXR.L ERd */
+    rotxr_l(system, rd_l(system, system->dbus.bl));
+    break;
+  case 0x8:
+    /** ROTR.B Rd */
+    rotr_b(system, rd_b(system, system->dbus.bl));
+    break;
+  case 0x9:
+    /** ROTR.W Rd */
+    rotr_w(system, rd_w(system, system->dbus.bl));
+    break;
+  case 0xB:
+    /** ROTR.L ERd */
+    rotr_l(system, rd_l(system, system->dbus.bl));
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1655,12 +1808,12 @@ H8_OP(op1d)
 
 H8_OP(op1f)
 {
-  if (system->dbus.bh == 0)
-    /** @todo DAS.B */
+  if (system->dbus.bh == 0x0)
+    /** @todo DAS.B Rd */
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
   else if (system->dbus.bh & B1000)
     /** CMP.L ERs, ERd */
-    rs_rd_l(system, *rd_l(system,system->dbus.bh), rd_l(system, system->dbus.bl), cmpl);
+    cmpl(system, *rd_l(system, system->dbus.bh), *rd_l(system, system->dbus.bl));
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -2492,6 +2645,8 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b4wi = 1;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b6wi = 1;
 
+  system->vmem.parts.io2.adc.adsr.flags.reserved = B00111111;
+
   /* Jump to program entrypoint */
   system->cpu.pc = h8_read_w(system, 0).u;
 }
@@ -2500,7 +2655,7 @@ static H8_OP_T funcs[256] =
 {
   op00, op01, op02, op03, op04, op05, op06, op07,
   op08, op09, op0a, op0b, op0c, op0d, op0e, op0f,
-  op10, op11, NULL, NULL, op14, op15, op16, op17,
+  op10, op11, op12, op13, op14, op15, op16, op17,
   op18, op19, op1a, op1b, op1c, op1d, NULL, op1f,
   op20, op21, op22, op23, op24, op25, op26, op27,
   op28, op29, op2a, op2b, op2c, op2d, op2e, op2f,
@@ -2669,6 +2824,136 @@ void h8_test_division(void)
   printf("Division test passed!\n");
 }
 
+void h8_test_shift(void)
+{
+  h8_byte_t b;
+  b.u = 0x55;
+  shal_b(&system, &b);
+  if (b.u != 0xAA || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(1)
+
+  b.u = 0x80;
+  shal_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(2)
+
+  w.u = 0x1234;
+  shal_w(&system, &w);
+  if (w.u != 0x2468 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(3)
+
+  w.u = 0x8000;
+  shal_w(&system, &w);
+  if (w.u != 0x0000 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(4)
+
+  l.u = 0x00010000;
+  shal_l(&system, &l);
+  if (l.u != 0x00020000 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(5)
+
+  l.u = 0x80000000;
+  shal_l(&system, &l);
+  if (l.u != 0x00000000 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(6)
+
+  b.u = 0x80;
+  shar_b(&system, &b);
+  if (b.u != 0xC0 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(7)
+
+  b.u = 0x01;
+  shar_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(8)
+
+  w.u = 0x8000;
+  shar_w(&system, &w);
+  if (w.u != 0xC000 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(9)
+
+  w.u = 0x0001;
+  shar_w(&system, &w);
+  if (w.u != 0x0000 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(10)
+
+  l.u = 0x80000000;
+  shar_l(&system, &l);
+  if (l.u != 0xC0000000 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(11)
+
+  l.u = 0x00000001;
+  shar_l(&system, &l);
+  if (l.u != 0x00000000 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(12)
+
+  b.u = 0x55;
+  shll_b(&system, &b);
+  if (b.u != 0xAA || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(13)
+
+  b.u = 0x80;
+  shll_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(14)
+
+  b.u = 0xAA;
+  shlr_b(&system, &b);
+  if (b.u != 0x55 || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(15)
+
+  b.u = 0x01;
+  shlr_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(16)
+
+  b.u = 0x85;
+  rotl_b(&system, &b);
+  if (b.u != 0x0B || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(17)
+
+  w.u = 0x8001;
+  rotl_w(&system, &w);
+  if (w.u != 0x0003 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(18)
+
+  b.u = 0x85;
+  rotr_b(&system, &b);
+  if (b.u != 0xC2 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(19)
+
+  w.u = 0x8001;
+  rotr_w(&system, &w);
+  if (w.u != 0xC000 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(20)
+
+  system.cpu.ccr.flags.c = 1;
+  b.u = 0x7F;
+  rotxl_b(&system, &b);
+  if (b.u != 0xFF || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(21)
+
+  system.cpu.ccr.flags.c = 0;
+  b.u = 0x80;
+  rotxl_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(22)
+
+  system.cpu.ccr.flags.c = 1;
+  b.u = 0xFE;
+  rotxr_b(&system, &b);
+  if (b.u != 0xFF || system.cpu.ccr.flags.c != 0)
+    H8_TEST_FAIL(23)
+
+  system.cpu.ccr.flags.c = 0;
+  b.u = 0x01;
+  rotxr_b(&system, &b);
+  if (b.u != 0x00 || system.cpu.ccr.flags.c != 1)
+    H8_TEST_FAIL(24)
+
+  printf("Shift tests passed!\n");
+}
+
 void h8_test_size(void)
 {
   h8_system_t system = {0};
@@ -2711,6 +2996,7 @@ void h8_test(void)
   h8_test_bit_manip();
   h8_test_bit_order();
   h8_test_division();
+  h8_test_shift();
   h8_test_size();
   h8_test_sub();
 #endif
