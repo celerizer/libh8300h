@@ -33,7 +33,7 @@ typedef union
 typedef struct
 {
   /** Max X by max Y */
-  h8_u8 vram[128 * 16];
+  h8_u8 vram[128 * 16 * 2];
 
   h8_bool selected;
   h8_bool data_mode;
@@ -333,6 +333,7 @@ void h8_lcd_init(h8_device_t *device)
     device->device = m_lcd;
     device->read = h8_lcd_read;
     device->write = h8_lcd_write;
+    device->data = m_lcd->vram;
     device->name = name;
     device->type = type;
   }

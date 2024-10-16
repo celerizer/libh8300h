@@ -17,17 +17,29 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_027,
     { 0x82341b9f, 0 },
     {
-      { 1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_0, h8_factory_control_read, NULL },
-      { 1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_2, NULL, NULL /* Testing battery? */ },
+      {
+        1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1,
+        { h8_factory_control_test_in, NULL, NULL, NULL },
+        { NULL, NULL, h8_factory_control_unknown_out, NULL }
+      },
 
-      { 2, H8_DEVICE_LED, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_0, NULL, h8_led_write_0 },
-      { 2, H8_DEVICE_LED, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_1, NULL, h8_led_write_1 },
+      {
+        2, H8_DEVICE_LED, H8_HOOKUP_PORT_8,
+        { NULL },
+        { h8_led_on_out, h8_led_color_out, NULL }
+      },
 
-      { 3, H8_DEVICE_EEPROM_8K, H8_HOOKUP_PORT_9, H8_HOOKUP_SELECT_0, h8_eeprom_read, h8_eeprom_write },
+      {
+        3, H8_DEVICE_EEPROM_8K, H8_HOOKUP_PORT_9,
+        { h8_eeprom_select_in, NULL },
+        { h8_eeprom_select_out, NULL }
+      },
 
-      { 4, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
-
-      /* A/D   Used to read two single-axis sensors (for step counting)? */
+      {
+        4, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B,
+        { h8_buttons_read_0, NULL },
+        { NULL }
+      },
 
       { DEVICES_END }
     }

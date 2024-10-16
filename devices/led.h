@@ -23,8 +23,8 @@ typedef struct
 
 void h8_led_init(h8_device_t *device);
 
-void h8_led_write_0(h8_device_t *device, h8_byte_t *dst, h8_byte_t value);
+void h8_led_on_out(h8_device_t *device, const h8_bool on);
 
-void h8_led_write_1(h8_device_t *device, h8_byte_t *dst, h8_byte_t value);
+void h8_led_color_out(h8_device_t *device, const h8_bool on);
 
 #endif

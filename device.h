@@ -78,30 +78,18 @@ typedef enum
   H8_HOOKUP_PORT_SIZE
 } h8_hookup_port;
 
-/**
- * An enumeration of pins that can be pulled down to perform a chip select on a
- * specific port
- */
-typedef enum
-{
-  H8_HOOKUP_SELECT_INVALID = 0,
-
-  H8_HOOKUP_SELECT_0 = 1,
-  H8_HOOKUP_SELECT_1 = 2,
-  H8_HOOKUP_SELECT_2 = 4,
-  H8_HOOKUP_SELECT_3 = 8,
-
-  H8_HOOKUP_SELECT_SIZE
-} h8_hookup_select;
-
 struct h8_device_t;
 
-typedef void H8D_OP_IN_T(struct h8_device_t*, h8_byte_t*);
-typedef void H8D_OP_OUT_T(struct h8_device_t*, h8_byte_t*, h8_byte_t);
 typedef void H8D_OP_INIT_T(struct h8_device_t*);
 typedef void H8D_OP_FREE_T(struct h8_device_t*);
+
 typedef h8_bool H8D_OP_SAVE_T(const struct h8_device_t*, h8_u8**, unsigned*);
 typedef h8_bool H8D_OP_LOAD_T(struct h8_device_t*, const h8_u8**, unsigned*);
+
+typedef h8_bool H8D_OP_PDR_IN_T(struct h8_device_t*);
+typedef void H8D_OP_PDR_OUT_T(struct h8_device_t*, const h8_bool);
+typedef void H8D_OP_SSU_IN_T(struct h8_device_t*, h8_byte_t*);
+typedef void H8D_OP_SSU_OUT_T(struct h8_device_t*, h8_byte_t*, h8_byte_t);
 
 typedef struct h8_device_t
 {
@@ -110,7 +98,6 @@ typedef struct h8_device_t
   h8_device_id type;
   const char *name;
   h8_hookup_port port;
-  h8_hookup_select select;
 
   /** A pointer to general device data without any additional state */
   void *data;
@@ -121,16 +108,30 @@ typedef struct h8_device_t
   H8D_OP_INIT_T *init;
 
   /**
-   * A function to be caled when the CPU reads from either the connected port
-   * directly, or the SSU when this device is selected
+   * A function to be called when the SSU requests data from a device. This
+   * function is polled for every SSU-enabled device when data is to be read,
+   * and each implementation should handle its own chip select.
    */
-  H8D_OP_IN_T *read;
+  H8D_OP_SSU_IN_T *ssu_in;
 
   /**
-   * A function to be caled when the CPU reads from either the connected port
-   * directly, or the SSU when this device is selected
+   * A function to be called when the SSU writes data to a device. This
+   * function is polled for every SSU-enabled device when data is to be written,
+   * and each implementation should handle its own chip select.
    */
-  H8D_OP_OUT_T *write;
+  H8D_OP_SSU_OUT_T *ssu_out;
+
+  /**
+   * PDR1: 3 pins - 0, 1, 2
+   * PDR3: 3 pins - 0, 1, 2
+   * PDR8: 3 pins - 2, 3, 4
+   * PDR9: 4 pins - 0, 1, 2, 3
+   * PDRB: 6 pins - 0, 1, 2, 3, 4, 5
+   */
+
+  H8D_OP_PDR_IN_T *pdr_ins[6];
+
+  H8D_OP_PDR_OUT_T *pdr_outs[6];
 
   /**
    * A function to be called to serialize the device state
@@ -161,16 +162,9 @@ typedef struct h8_software_hookup_t
   /* The port this hookup takes place in */
   h8_hookup_port port;
 
-  /* The select pin pulled when this device is being accessed on this port */
-  h8_hookup_select select;
+  H8D_OP_PDR_IN_T *pdr_ins[6];
 
-  /* A pointer to the function called when data is loaded from the port.
-   * If NULL, a default implementation will be used. */
-  H8D_OP_IN_T *func_load;
-
-  /* A pointer to the function called when data is stored to the port.
-   * If NULL, a default implementation will be used. */
-  H8D_OP_OUT_T *func_store;
+  H8D_OP_PDR_OUT_T *pdr_outs[6];
 } software_hookup_t;
 
 typedef struct h8_system_preset_t
