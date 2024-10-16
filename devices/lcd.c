@@ -32,11 +32,14 @@ typedef union
 
 typedef struct
 {
-  h8_u8 vram[128 * 64];
+  /** Max X by max Y */
+  h8_u8 vram[128 * 16];
+
   h8_bool selected;
   h8_bool data_mode;
   h8_u8 command;
-  h8_bool second_byte;
+
+  h8_bool second_write_cmd, second_write_data, second_read;
 
   h8_u8 x, y;
 
@@ -83,24 +86,69 @@ void h8_lcd_mode_pin(h8_device_t *device, const h8_bool on)
   m_lcd->data_mode = on;
 }
 
+/**
+ * VRAM layout as array of bytes looks summat like this:
+ *           x0     x1     x2     x3     ... x127
+ *         |------|------|------|------|
+ * y0-3    | 0000 | 0002 | 0004 | 0006 | ... $00FE / 254
+ *         |------|------|------|------|
+ * y4-7    | 0001 | 0003 | 0005 | 0007 | ... $00FF / 255
+ *         |------|------|------|------|
+ * y8-11   | 0100 | 0102 | 0104 | 0106 | ... $01FE / 510
+ *         |------|------|------|------|
+ * y12-15  | 0101 | 0103 | 0105 | 0107 | ... $01FF / 511
+ *         |------|------|------|------|
+ */
+
 void h8_lcd_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_lcd_t *m_lcd = device->device;
 
   if (m_lcd->data_mode)
-    dst->u = m_lcd->status.raw;
+  {
+    /* Data mode read -- retreive raw VRAM bytes */
+    dst->u = m_lcd->vram[m_lcd->y * 0x0100 +
+                         m_lcd->x * 2 +
+                         m_lcd->second_read ? 1 : 0];
+
+    /* If we are retreiving the second byte, increment only the X address */
+    if (m_lcd->second_read)
+    {
+      m_lcd->x = (m_lcd->x + 1) & B01111111;
+      m_lcd->second_read = FALSE;
+    }
+    else
+      m_lcd->second_read = TRUE;
+  }
   else
-    /** @todo */
-    dst->u = 0;
+    /* Command mode read -- retreive the status register */
+    dst->u = m_lcd->status.raw;
 }
 
 void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_lcd_t *m_lcd = device->device;
 
-  if (!m_lcd->data_mode)
+  if (m_lcd->data_mode)
   {
-    if (!m_lcd->second_byte)
+    /* Data mode write -- plot pixels */
+    m_lcd->vram[m_lcd->y * 0x0100 +
+                m_lcd->x * 2 +
+                m_lcd->second_write_data ? 1 : 0] = value.u;
+
+    /* If we are writing the second byte, increment only the X address */
+    if (m_lcd->second_write_data)
+    {
+      m_lcd->x = (m_lcd->x + 1) & B01111111;
+      m_lcd->second_write_data = FALSE;
+    }
+    else
+      m_lcd->second_write_data = TRUE;
+  }
+  else
+  {
+    /* Command mode write -- execute commands */
+    if (!m_lcd->second_write_cmd)
     {
       m_lcd->command = value.u;
 
@@ -110,7 +158,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
        */
       if ((value.u >= 0x40 && value.u <= 0x4F) ||
           (value.u >= 0x80 && value.u <= 0x8F))
-        m_lcd->second_byte = TRUE;
+        m_lcd->second_write_cmd = TRUE;
       else switch (m_lcd->command)
       {
       /** Set Column Address bit0-3 */
@@ -183,7 +231,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0xBD:
       case 0xBE:
       case 0xBF:
-        m_lcd->y = (value.u & B00001111) * 8;
+        m_lcd->y = value.u & B00001111;
         break;
       case 0xC0:
       case 0xC1:
@@ -266,12 +314,8 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       default:
         break;
       }
-      m_lcd->second_byte = FALSE;
+      m_lcd->second_write_cmd = FALSE;
     }
-  }
-  else
-  {
-    /** @todo plot pixels */
   }
 
   *dst = value;
