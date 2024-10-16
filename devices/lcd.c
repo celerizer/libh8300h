@@ -69,23 +69,6 @@ typedef struct
   h8_lcd_sr_t status;
 } h8_lcd_t;
 
-#define H8_LCD_MODE_CMD 0
-#define H8_LCD_MODE_DATA 1
-
-void h8_lcd_select_pin(h8_device_t *device, const h8_bool on)
-{
-  h8_lcd_t *m_lcd = device->device;
-
-  m_lcd->selected = !on;
-}
-
-void h8_lcd_mode_pin(h8_device_t *device, const h8_bool on)
-{
-  h8_lcd_t *m_lcd = device->device;
-
-  m_lcd->data_mode = on;
-}
-
 /**
  * VRAM layout as array of bytes looks summat like this:
  *           x0     x1     x2     x3     ... x127
@@ -104,7 +87,9 @@ void h8_lcd_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_lcd_t *m_lcd = device->device;
 
-  if (m_lcd->data_mode)
+  if (!m_lcd->selected)
+    return;
+  else if (m_lcd->data_mode)
   {
     /* Data mode read -- retreive raw VRAM bytes */
     dst->u = m_lcd->vram[m_lcd->y * 0x0100 +
@@ -129,7 +114,9 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_lcd_t *m_lcd = device->device;
 
-  if (m_lcd->data_mode)
+  if (!m_lcd->selected)
+    return;
+  else if (m_lcd->data_mode)
   {
     /* Data mode write -- plot pixels */
     m_lcd->vram[m_lcd->y * 0x0100 +
@@ -321,6 +308,20 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
   *dst = value;
 }
 
+void h8_lcd_select_out(h8_device_t *device, const h8_bool on)
+{
+  h8_lcd_t *m_lcd = device->device;
+
+  m_lcd->selected = !on;
+}
+
+void h8_lcd_mode_out(h8_device_t *device, const h8_bool on)
+{
+  h8_lcd_t *m_lcd = device->device;
+
+  m_lcd->data_mode = on;
+}
+
 void h8_lcd_init(h8_device_t *device)
 {
   if (device)
@@ -331,8 +332,8 @@ void h8_lcd_init(h8_device_t *device)
     m_lcd->status.flags.id = 0x08;
 
     device->device = m_lcd;
-    device->read = h8_lcd_read;
-    device->write = h8_lcd_write;
+    device->ssu_in = h8_lcd_read;
+    device->ssu_out = h8_lcd_write;
     device->data = m_lcd->vram;
     device->name = name;
     device->type = type;

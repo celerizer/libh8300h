@@ -8,7 +8,7 @@
 #include "system.h"
 #include "types.h"
 
-#define DEVICES_END H8_DEVICE_INVALID, 0, 0, 0, NULL, NULL
+#define DEVICES_END H8_DEVICE_INVALID, 0, 0, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
 {
@@ -31,13 +31,13 @@ static const h8_system_preset_t h8_systems[] =
 
       {
         3, H8_DEVICE_EEPROM_8K, H8_HOOKUP_PORT_9,
-        { h8_eeprom_select_in, NULL },
+        { NULL, NULL },
         { h8_eeprom_select_out, NULL }
       },
 
       {
         4, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B,
-        { h8_buttons_read_0, NULL },
+        { h8_buttons_in_0, NULL },
         { NULL }
       },
 
@@ -49,10 +49,18 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_031,
     { 0x64b40d8d, 0x9321792f, 0 },
     {
-      { 1, H8_DEVICE_SPI_BUS, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_3, NULL, NULL },
+      {
+        1, H8_DEVICE_SPI_BUS, H8_HOOKUP_PORT_8,
+        { NULL, /** @todo Savedata chip select */ NULL, NULL },
+        { NULL }
+      },
 
       /* Not actually used in normal operation */
-      { 2, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
+      {
+        2, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B,
+        { h8_buttons_in_0, NULL },
+        { NULL }
+      },
 
       /**
        * There is also code in the earlier ROM for interfacing with an LED on
@@ -67,20 +75,34 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
-      { 1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_0, NULL, NULL /* SSU select */ },
+      {
+        1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1,
+        { NULL },
+        { h8_lcd_select_out, h8_lcd_mode_out, NULL }
+      },
 
-      { 2, H8_DEVICE_EEPROM_64K, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_2, h8_eeprom_read, h8_eeprom_write },
+      {
+        2, H8_DEVICE_EEPROM_64K, H8_HOOKUP_PORT_1,
+        { NULL },
+        { NULL, NULL, h8_eeprom_select_out }
+      },
 
-      { 3, H8_DEVICE_BMA150, H8_HOOKUP_PORT_9, H8_HOOKUP_SELECT_0, NULL, NULL },
+      {
+        3, H8_DEVICE_BMA150, H8_HOOKUP_PORT_9,
+        { NULL },
+        { h8_bma150_select_out, NULL }
+      },
 
-      { 4, H8_DEVICE_3BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
-
-      { 5, H8_DEVICE_BUZZER, 0, 1, NULL, NULL }, /* Not an IO port? Timer W? */
+      {
+        4, H8_DEVICE_3BUTTON, H8_HOOKUP_PORT_B,
+        { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2 },
+        { NULL }
+      },
 
       { DEVICES_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, { { H8_DEVICE_INVALID, 0, 0, 0, NULL, NULL } } }
+  { NULL, H8_SYSTEM_INVALID, { 0 }, {  } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -170,7 +192,6 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
 
         /* Setup IO functions */
         device->port = hookup->port;
-        device->select = hookup->select;
       }
     }
 

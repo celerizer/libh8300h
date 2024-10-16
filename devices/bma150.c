@@ -32,7 +32,7 @@ typedef struct
 #define H8_BMA150_WRITING 0
 #define H8_BMA150_READING 1
 
-void h8_bma150_select_pin(h8_device_t *device, h8_bool on)
+void h8_bma150_select_out(h8_device_t *device, h8_bool on)
 {
   h8_bma150_t *bma = device->device;
 
@@ -96,8 +96,8 @@ void h8_bma150_init(h8_device_t *device)
     device->type = type;
     device->device = bma;
 
-    device->read = h8_bma150_read;
-    device->write = h8_bma150_write;
+    device->ssu_in = h8_bma150_read;
+    device->ssu_out = h8_bma150_write;
     device->save = NULL; /** @todo */
     device->load = NULL; /** @todo */
 
