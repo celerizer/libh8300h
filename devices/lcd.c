@@ -10,7 +10,7 @@ typedef union
   H8_BITFIELD_4
   (
     /** Hardcoded chip ID */
-    h8_u8 id : 4,
+    h8_u8 id : 5,
 
     /** Whether the device is busy with a reset. Unimplemented */
     h8_u8 res : 1,
@@ -23,6 +23,12 @@ typedef union
   ) flags;
   h8_u8 raw;
 } h8_lcd_sr_t;
+
+#define H8_LCD_PALETTE_WHITE 0
+#define H8_LCD_PALETTE_LIGHT_GRAY 1
+#define H8_LCD_PALETTE_DARK_GRAY 2
+#define H8_LCD_PALETTE_BLACK 3
+#define H8_LCD_PALETTE_SIZE 4
 
 typedef struct
 {
@@ -49,6 +55,11 @@ typedef struct
   h8_bool power_save_mode_sleep;
 
   h8_bool x_flip, y_flip;
+
+  /** Various unimplemented parameters */
+  h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion;
+
+  h8_u8 palette_modes[H8_LCD_PALETTE_SIZE];
 
   h8_lcd_sr_t status;
 } h8_lcd_t;
@@ -88,7 +99,15 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
   if (!m_lcd->second_byte)
   {
     m_lcd->command = value.u;
-    switch (m_lcd->command)
+
+    /**
+     * Await second byte for 4X or 8X commands
+     * @todo A little more nuanced than this but not for current purposes
+     */
+    if ((value.u >= 0x40 && value.u <= 0x4F) ||
+        (value.u >= 0x80 && value.u <= 0x8F))
+      m_lcd->second_byte = TRUE;
+    else switch (m_lcd->command)
     {
     /** Set Column Address bit0-3 */
     case 0x00:
@@ -118,7 +137,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     case 0x15:
     case 0x16:
     case 0x17:
-      m_lcd->x = (m_lcd->x & B00001111) | ((value.u & B00000111) << 4);
+      m_lcd->x = (m_lcd->x & B00001111) | (h8_u8)((value.u & B00000111) << 4);
       break;
     case 0xA2:
       m_lcd->icon_enable = FALSE;
@@ -197,6 +216,49 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
   {
     switch (m_lcd->command)
     {
+    case 0x40:
+    case 0x41:
+    case 0x42:
+    case 0x43:
+      m_lcd->start_line = value.u & B01111111;
+      break;
+    case 0x44:
+    case 0x45:
+    case 0x46:
+    case 0x47:
+      m_lcd->display_offset = value.u & B00111111;
+      break;
+    case 0x48:
+    case 0x49:
+    case 0x4A:
+    case 0x4B:
+      m_lcd->multiplex_ratio = value.u;
+      break;
+    case 0x4C:
+    case 0x4D:
+    case 0x4E:
+    case 0x4F:
+      m_lcd->nline_inversion = value.u;
+      break;
+    case 0x81:
+      m_lcd->contrast = value.u & B00111111;
+      break;
+    case 0x88:
+    case 0x89:
+      m_lcd->palette_modes[H8_LCD_PALETTE_WHITE] = value.u & B00001111;
+      break;
+    case 0x8A:
+    case 0x8B:
+      m_lcd->palette_modes[H8_LCD_PALETTE_LIGHT_GRAY] = value.u & B00001111;
+      break;
+    case 0x8C:
+    case 0x8D:
+      m_lcd->palette_modes[H8_LCD_PALETTE_DARK_GRAY] = value.u & B00001111;
+      break;
+    case 0x8E:
+    case 0x8F:
+      m_lcd->palette_modes[H8_LCD_PALETTE_BLACK] = value.u & B00001111;
+      break;
     default:
       break;
     }
