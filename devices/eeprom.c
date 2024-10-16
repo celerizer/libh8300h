@@ -60,8 +60,8 @@ typedef struct
 {
   h8_byte_t *data;
   unsigned length;
-  h8_u8 command;
   h8_word_t address;
+  h8_u8 command;
   h8_u8 position;
   union
   {
