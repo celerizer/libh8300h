@@ -368,8 +368,11 @@ H8_OUT(sssro)
 
 H8_IN(ssrdri)
 {
-  if (system->ssu_device && system->ssu_device->read)
-    system->ssu_device->read(system->ssu_device, byte);
+  unsigned i;
+
+  for (i = 0; i < system->device_count; i++)
+    if (system->devices[i].ssu_in)
+      system->devices[i].ssu_in(&system->devices[i], byte);
 }
 
 H8_OUT(ssrdro)
@@ -386,16 +389,19 @@ H8_OUT(ssrdro)
 
 H8_OUT(sstdro)
 {
+  unsigned i;
+
   system->vmem.parts.io1.ssu.sssr.flags.tend = 0;
   system->vmem.parts.io1.ssu.sssr.flags.tdre = 0;
   system->vmem.parts.io1.ssu.sssr.flags.rdrf = 0;
-  if (system->ssu_device && system->ssu_device->write)
-  {
-    system->ssu_device->write(system->ssu_device, byte, value);
-    system->vmem.parts.io1.ssu.sssr.flags.tend = 1;
-    system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
-    system->vmem.parts.io1.ssu.sssr.flags.rdrf = 1;
-  }
+
+  for (i = 0; i < system->device_count; i++)
+    if (system->devices[i].ssu_out)
+      system->devices[i].ssu_out(&system->devices[i], byte, value);
+
+  system->vmem.parts.io1.ssu.sssr.flags.tend = 1;
+  system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
+  system->vmem.parts.io1.ssu.sssr.flags.rdrf = 1;
 }
 
 /**
