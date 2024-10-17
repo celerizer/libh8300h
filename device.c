@@ -8,7 +8,7 @@
 #include "system.h"
 #include "types.h"
 
-#define DEVICES_END H8_DEVICE_INVALID, 0, { NULL }, { NULL }
+#define DEVICES_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
 {

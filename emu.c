@@ -251,10 +251,10 @@ H8_IN(pdr1i)
 
   for (i = 0; i < 3; i++)
   {
-    if (system->pdr1_in->device && system->pdr1_in->func)
+    if (system->pdr1_in[i].device && system[i].pdr1_in->func)
     {
       byte->u &= ~(1 << i);
-      byte->u |= (system->pdr1_in->func(system->pdr1_in->device) & 0x01) << i;
+      byte->u |= (system->pdr1_in[i].func(system->pdr1_in[i].device) & 0x01) << i;
     }
   }
 }

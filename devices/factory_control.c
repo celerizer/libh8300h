@@ -19,7 +19,7 @@ void h8_factory_control_init(h8_device_t *device)
 h8_bool h8_factory_control_test_in(h8_device_t *device)
 {
   H8_UNUSED(device);
-  return H8_FACTORY_CONTROL_NO_TEST;
+  return H8_FACTORY_CONTROL_TEST;
 }
 
 /** @todo "Set for sum of eight A/D conversions" */
