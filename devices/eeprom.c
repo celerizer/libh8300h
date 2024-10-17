@@ -171,7 +171,9 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
-  if (eeprom->position == 0)
+  if (!eeprom->selected)
+    return;
+  else if (eeprom->position == 0)
   {
     eeprom->command = value.u;
 

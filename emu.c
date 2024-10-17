@@ -245,34 +245,52 @@ H8_SHL_OP(l, h8_long_t, 0x00000001, r, >>=)
 #define H8_IO_DUMMY_IN H8_UNUSED(system); H8_UNUSED(byte);
 #define H8_IO_DUMMY_OUT H8_UNUSED(system); H8_UNUSED(byte); H8_UNUSED(value);
 
+H8_IN(pdr1i)
+{
+  unsigned i;
+
+  for (i = 0; i < 3; i++)
+  {
+    if (system->pdr1_in->device && system->pdr1_in->func)
+    {
+      byte->u &= ~(1 << i);
+      byte->u |= (system->pdr1_in->func(system->pdr1_in->device) & 0x01) << i;
+    }
+  }
+}
+
 H8_OUT(pdr1o)
 {
   unsigned i;
 
-  for (i = 0; i < system->device_count; i++)
+  for (i = 0; i < 3; i++)
+    if (system->pdr1_out[i].device && system->pdr1_out[i].func)
+      system->pdr1_out[i].func(system->pdr1_out[i].device, (value.u >> i) & 1);
+
+  *byte = value;
+}
+
+H8_IN(pdr3i)
+{
+  unsigned i;
+
+  for (i = 0; i < 3; i++)
   {
-    if (system->devices[i].port == H8_HOOKUP_PORT_1 &&
-        !(system->devices[i].select & value.u))
+    if (system->pdr3_in[i].device && system[i].pdr3_in->func)
     {
-      system->ssu_device = &system->devices[i];
-      printf("Using %s as port 1 device\n", system->devices[i].name);
-      *byte = value;
-      return;
+      byte->u &= ~(1 << i);
+      byte->u |= (system->pdr3_in[i].func(system->pdr3_in[i].device) & 0x01) << i;
     }
   }
-  system->ssu_device = NULL;
-  printf("Couldn't find port 1 device for %u\n", value.u);
-  *byte = value;
 }
 
 H8_OUT(pdr3o)
 {
   unsigned i;
 
-  for (i = 0; i < system->device_count; i++)
-    if (system->devices[i].port == H8_HOOKUP_PORT_3 &&
-        !(system->devices[i].select & value.u))
-      system->ssu_device = &system->devices[i];
+  for (i = 0; i < 3; i++)
+    if (system->pdr3_out[i].device && system[i].pdr3_out->func)
+      system->pdr3_out[i].func(system->pdr3_out[i].device, (value.u >> i) & 1);
 
   *byte = value;
 }
@@ -281,32 +299,53 @@ H8_OUT(pdr3o)
  * 8.3.1 Port Data Register 8 (PDR8)
  */
 
+H8_IN(pdr8i)
+{
+  unsigned i;
+
+  for (i = 0; i < 3; i++)
+  {
+    if (system->pdr8_in[i].device && system->pdr8_in[i].func)
+    {
+      byte->u &= ~(1 << (i + 2));
+      byte->u |= (system->pdr8_in[i].func(system->pdr8_in[i].device) & 0x01) << (i + 2);
+    }
+  }
+}
+
 H8_OUT(pdr8o)
 {
   unsigned i;
 
-  for (i = 0; i < system->device_count; i++)
-    if (system->devices[i].port == H8_HOOKUP_PORT_8)
-      system->devices[i].write(&system->devices[i], byte, value);
+  for (i = 0; i < 3; i++)
+    if (system->pdr8_out[i].device && system[i].pdr8_out->func)
+      system->pdr8_out[i].func(system->pdr8_out[i].device, (value.u >> (i + 2)) & 1);
 
   *byte = value;
+}
+
+H8_IN(pdr9i)
+{
+  unsigned i;
+
+  for (i = 0; i < 4; i++)
+  {
+    if (system->pdr9_in[i].device && system[i].pdr9_in->func)
+    {
+      byte->u &= ~(1 << i);
+      byte->u |= (system->pdr9_in[i].func(system->pdr9_in[i].device) & 0x01) << i;
+    }
+  }
 }
 
 H8_OUT(pdr9o)
 {
   unsigned i;
 
-  for (i = 0; i < system->device_count; i++)
-  {
-    if (system->devices[i].port == H8_HOOKUP_PORT_9 &&
-        !(system->devices[i].select & value.u))
-    {
-      system->ssu_device = &system->devices[i];
-      *byte = value;
-      return;
-    }
-  }
-  system->ssu_device = NULL;
+  for (i = 0; i < 4; i++)
+    if (system->pdr9_out[i].device && system[i].pdr9_out->func)
+      system->pdr9_out[i].func(system->pdr9_out[i].device, (value.u >> i) & 1);
+
   *byte = value;
 }
 
@@ -318,11 +357,14 @@ H8_IN(pdrbi)
 {
   unsigned i;
 
-  for (i = 0; i < system->device_count; i++)
-    if (system->devices[i].port == H8_HOOKUP_PORT_B)
-      system->devices[i].read(&system->devices[i], byte);
-
-  byte->u &= B00111111;
+  for (i = 0; i < 6; i++)
+  {
+    if (system->pdrb_in[i].device && system[i].pdrb_in->func)
+    {
+      byte->u &= ~(1 << i);
+      byte->u |= (system[i].pdrb_in->func(system->pdrb_in[i].device) & 0x01) << i;
+    }
+  }
 }
 
 H8_OUT(pdrbo)
@@ -479,8 +521,8 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFD0 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, pdrbi, NULL,
+  NULL, NULL, NULL, NULL, pdr1i, NULL, pdr3i, NULL,
+  pdr8i, NULL, NULL, NULL, pdr9i, NULL, pdrbi, NULL,
   /* 0xFFE0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

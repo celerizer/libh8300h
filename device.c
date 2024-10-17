@@ -114,7 +114,7 @@ static const h8_system_preset_t h8_systems[] =
       { DEVICES_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, { NULL } }
+  { NULL, H8_SYSTEM_INVALID, { 0 }, { { DEVICES_END } } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -195,6 +195,11 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
         break;
       else
       {
+        h8_system_pin_in_t *pins_in;
+        h8_system_pin_out_t *pins_out;
+        unsigned pin_count;
+        unsigned k;
+
         /* Create the device if it does not already exist */
         if (device->type == H8_DEVICE_INVALID)
         {
@@ -204,6 +209,53 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
 
         /* Setup IO functions */
         device->port = hookup->port;
+
+        /* Figure out which port we're on */
+        switch (device->port)
+        {
+        case H8_HOOKUP_PORT_1:
+          pins_in = system->pdr1_in;
+          pins_out = system->pdr1_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_3:
+          pins_in = system->pdr3_in;
+          pins_out = system->pdr3_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_8:
+          pins_in = system->pdr8_in;
+          pins_out = system->pdr8_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_9:
+          pins_in = system->pdr9_in;
+          pins_out = system->pdr9_out;
+          pin_count = 4;
+          break;
+        case H8_HOOKUP_PORT_B:
+          pins_in = system->pdrb_in;
+          pins_out = system->pdrb_out;
+          pin_count = 6;
+          break;
+        default:
+          continue;
+        }
+
+        /* Hookup any used pins */
+        for (k = 0; k < pin_count; k++)
+        {
+          if (hookup->pdr_ins[k])
+          {
+            pins_in[k].device = device;
+            pins_in[k].func = hookup->pdr_ins[k];
+          }
+          if (hookup->pdr_outs[k])
+          {
+            pins_out[k].device = device;
+            pins_out[k].func = hookup->pdr_outs[k];
+          }
+        }
       }
     }
 
