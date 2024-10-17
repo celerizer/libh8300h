@@ -248,6 +248,18 @@ typedef void (*H8_OUT_T)(struct h8_system_t*, h8_byte_t*, const h8_byte_t);
 #define H8_IN(a) void a(h8_system_t* system, h8_byte_t* byte)
 #define H8_OUT(a) void a(h8_system_t* system, h8_byte_t* byte, h8_byte_t value)
 
+typedef struct
+{
+  H8D_OP_PDR_IN_T *func;
+  h8_device_t *device;
+} h8_system_pin_in_t;
+
+typedef struct
+{
+  H8D_OP_PDR_OUT_T *func;
+  h8_device_t *device;
+} h8_system_pin_out_t;
+
 typedef struct h8_system_t
 {
   h8_cpu_t cpu;
@@ -266,8 +278,20 @@ typedef struct h8_system_t
   /** The number of devices initialized within `devices` */
   unsigned device_count;
 
-  /** A pointer to the device the SSU is currently interacting with */
-  h8_device_t *ssu_device;
+  h8_system_pin_in_t pdr1_in[3];
+  h8_system_pin_out_t pdr1_out[3];
+
+  h8_system_pin_in_t pdr3_in[3];
+  h8_system_pin_out_t pdr3_out[3];
+
+  h8_system_pin_in_t pdr8_in[3];
+  h8_system_pin_out_t pdr8_out[3];
+
+  h8_system_pin_in_t pdr9_in[4];
+  h8_system_pin_out_t pdr9_out[4];
+
+  h8_system_pin_in_t pdrb_in[6];
+  h8_system_pin_out_t pdrb_out[6];
 
   /** Whether or not SLEEP mode is currently active */
   h8_bool sleep;

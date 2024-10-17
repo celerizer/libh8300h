@@ -17,11 +17,11 @@ void h8_led_init(h8_device_t *device)
   {
     device->name = name;
     device->type = type;
-    device->device = h8_dma_alloc(sizeof(h8_led_t), FALSE);
+    device->device = h8_dma_alloc(sizeof(h8_led_t), TRUE);
   }
 }
 
-void h8_led_write_0(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
+void h8_led_on_out(h8_device_t *device, const h8_bool on)
 {
 #if H8_SAFETY
   if (device)
@@ -33,16 +33,15 @@ void h8_led_write_0(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
     if (m_led)
     {
 #endif
-      m_led->on = value.u;
+      m_led->on = on;
       h8_led_update_state(m_led);
 #if H8_SAFETY
     }
   }
 #endif
-  *dst = value;
 }
 
-void h8_led_write_1(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
+void h8_led_color_out(h8_device_t *device, const h8_bool on)
 {
 #if H8_SAFETY
   if (device)
@@ -54,11 +53,10 @@ void h8_led_write_1(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
     if (m_led)
     {
 #endif
-      m_led->green = value.u;
+      m_led->green = on;
       h8_led_update_state(m_led);
 #if H8_SAFETY
     }
   }
 #endif
-  *dst = value;
 }

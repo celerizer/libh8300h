@@ -8,7 +8,7 @@
 #include "system.h"
 #include "types.h"
 
-#define DEVICES_END H8_DEVICE_INVALID, 0, 0, 0, NULL, NULL
+#define DEVICES_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
 {
@@ -17,30 +17,57 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_027,
     { 0x82341b9f, 0 },
     {
-      { 1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_0, h8_factory_control_read, NULL },
-      { 1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_2, NULL, NULL /* Testing battery? */ },
+      {
+        H8_DEVICE_FACTORY_CONTROL,
+        H8_HOOKUP_PORT_1,
+        { h8_factory_control_test_in, NULL },
+        { NULL, NULL, h8_factory_control_unknown_out, NULL }
+      },
 
-      { 2, H8_DEVICE_LED, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_0, NULL, h8_led_write_0 },
-      { 2, H8_DEVICE_LED, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_1, NULL, h8_led_write_1 },
+      {
+        H8_DEVICE_LED,
+        H8_HOOKUP_PORT_8,
+        { NULL },
+        { h8_led_on_out, h8_led_color_out, NULL }
+      },
 
-      { 3, H8_DEVICE_EEPROM_8K, H8_HOOKUP_PORT_9, H8_HOOKUP_SELECT_0, h8_eeprom_read, h8_eeprom_write },
+      {
+        H8_DEVICE_EEPROM_8K,
+        H8_HOOKUP_PORT_9,
+        { NULL },
+        { h8_eeprom_select_out, NULL }
+      },
 
-      { 4, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
-
-      /* A/D   Used to read two single-axis sensors (for step counting)? */
+      {
+        H8_DEVICE_1BUTTON,
+        H8_HOOKUP_PORT_B,
+        { h8_buttons_in_0, NULL },
+        { NULL }
+      },
 
       { DEVICES_END }
     }
   },
+
   {
     "NTR-031",
     H8_SYSTEM_NTR_031,
-    { 0x64b40d8d, 0x9321792f, 0 },
+    { 0x64b40d8d /* earlier */, 0x9321792f /* later */, 0 },
     {
-      { 1, H8_DEVICE_SPI_BUS, H8_HOOKUP_PORT_8, H8_HOOKUP_SELECT_3, NULL, NULL },
+      {
+        H8_DEVICE_SPI_BUS,
+        H8_HOOKUP_PORT_8,
+        { NULL, /** @todo Savedata chip select */ NULL, NULL },
+        { NULL }
+      },
 
       /* Not actually used in normal operation */
-      { 2, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
+      {
+        H8_DEVICE_1BUTTON,
+        H8_HOOKUP_PORT_B,
+        { h8_buttons_in_0, NULL },
+        { NULL }
+      },
 
       /**
        * There is also code in the earlier ROM for interfacing with an LED on
@@ -50,25 +77,44 @@ static const h8_system_preset_t h8_systems[] =
       { DEVICES_END }
     }
   },
+
   {
     "NTR-032",
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
-      { 1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_0, NULL, NULL /* SSU select */ },
+      {
+        H8_DEVICE_LCD,
+        H8_HOOKUP_PORT_1,
+        { NULL },
+        { h8_lcd_select_out, h8_lcd_mode_out, NULL }
+      },
 
-      { 2, H8_DEVICE_EEPROM_64K, H8_HOOKUP_PORT_1, H8_HOOKUP_SELECT_2, h8_eeprom_read, h8_eeprom_write },
+      {
+        H8_DEVICE_EEPROM_64K,
+        H8_HOOKUP_PORT_1,
+        { NULL },
+        { NULL, NULL, h8_eeprom_select_out, NULL }
+      },
 
-      { 3, H8_DEVICE_BMA150, H8_HOOKUP_PORT_9, H8_HOOKUP_SELECT_0, NULL, NULL },
+      {
+        H8_DEVICE_BMA150,
+        H8_HOOKUP_PORT_9,
+        { NULL },
+        { h8_bma150_select_out, NULL }
+      },
 
-      { 4, H8_DEVICE_3BUTTON, H8_HOOKUP_PORT_B, 0, h8_buttons_read, NULL },
-
-      { 5, H8_DEVICE_BUZZER, 0, 1, NULL, NULL }, /* Not an IO port? Timer W? */
+      {
+        H8_DEVICE_3BUTTON,
+        H8_HOOKUP_PORT_B,
+        { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2, NULL },
+        { NULL }
+      },
 
       { DEVICES_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, { { H8_DEVICE_INVALID, 0, 0, 0, NULL, NULL } } }
+  { NULL, H8_SYSTEM_INVALID, { 0 }, { { DEVICES_END } } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -143,12 +189,17 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
     for (i = 0; i < H8_HOOKUP_MAX; i++)
     {
       const software_hookup_t *hookup = &preset->hookups[i];
-      h8_device_t *device = &system->devices[hookup->id];
+      h8_device_t *device = &system->devices[j];
 
       if (preset->hookups[i].type == H8_DEVICE_INVALID)
         break;
       else
       {
+        h8_system_pin_in_t *pins_in;
+        h8_system_pin_out_t *pins_out;
+        unsigned pin_count;
+        unsigned k;
+
         /* Create the device if it does not already exist */
         if (device->type == H8_DEVICE_INVALID)
         {
@@ -158,7 +209,53 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
 
         /* Setup IO functions */
         device->port = hookup->port;
-        device->select = hookup->select;
+
+        /* Figure out which port we're on */
+        switch (device->port)
+        {
+        case H8_HOOKUP_PORT_1:
+          pins_in = system->pdr1_in;
+          pins_out = system->pdr1_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_3:
+          pins_in = system->pdr3_in;
+          pins_out = system->pdr3_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_8:
+          pins_in = system->pdr8_in;
+          pins_out = system->pdr8_out;
+          pin_count = 3;
+          break;
+        case H8_HOOKUP_PORT_9:
+          pins_in = system->pdr9_in;
+          pins_out = system->pdr9_out;
+          pin_count = 4;
+          break;
+        case H8_HOOKUP_PORT_B:
+          pins_in = system->pdrb_in;
+          pins_out = system->pdrb_out;
+          pin_count = 6;
+          break;
+        default:
+          continue;
+        }
+
+        /* Hookup any used pins */
+        for (k = 0; k < pin_count; k++)
+        {
+          if (hookup->pdr_ins[k])
+          {
+            pins_in[k].device = device;
+            pins_in[k].func = hookup->pdr_ins[k];
+          }
+          if (hookup->pdr_outs[k])
+          {
+            pins_out[k].device = device;
+            pins_out[k].func = hookup->pdr_outs[k];
+          }
+        }
       }
     }
 

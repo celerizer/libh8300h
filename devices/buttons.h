@@ -27,6 +27,10 @@ void h8_buttons_init_1b(h8_device_t *device);
 
 void h8_buttons_init_3b(h8_device_t *device);
 
-void h8_buttons_read(h8_device_t *device, h8_byte_t *byte);
+h8_bool h8_buttons_in_0(h8_device_t *device);
+
+h8_bool h8_buttons_in_1(h8_device_t *device);
+
+h8_bool h8_buttons_in_2(h8_device_t *device);
 
 #endif

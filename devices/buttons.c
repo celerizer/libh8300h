@@ -28,15 +28,28 @@ void h8_buttons_init_3b(h8_device_t *device)
   h8_buttons_init(device, H8_DEVICE_3BUTTON);
 }
 
-void h8_buttons_read(h8_device_t *device, h8_byte_t *byte)
+static h8_bool h8_buttons_in(h8_device_t *device, unsigned index)
 {
   if (device)
   {
     h8_buttons_t *m_buttons = device->device;
-    unsigned i;
-
-    byte->u &= ((1 << m_buttons->button_count) - 1);
-    for (i = 0; i < m_buttons->button_count; i++)
-      byte->u |= (m_buttons->buttons[i] << i);
+    return m_buttons->buttons[index];
   }
+  else
+    return 0;
+}
+
+h8_bool h8_buttons_in_0(h8_device_t *device)
+{
+  return h8_buttons_in(device, 0);
+}
+
+h8_bool h8_buttons_in_1(h8_device_t *device)
+{
+  return h8_buttons_in(device, 1);
+}
+
+h8_bool h8_buttons_in_2(h8_device_t *device)
+{
+  return h8_buttons_in(device, 2);
 }

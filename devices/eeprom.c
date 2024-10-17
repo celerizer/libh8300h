@@ -63,6 +63,7 @@ typedef struct
   h8_word_t address;
   h8_u8 command;
   h8_u8 position;
+  h8_bool selected;
   union
   {
     H8_BITFIELD_5
@@ -146,7 +147,9 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
-  switch (eeprom->command)
+  if (!eeprom->selected)
+    return;
+  else switch (eeprom->command)
   {
   case H8_EEPROM_READ:
     *dst = eeprom->data[eeprom->address.u];
@@ -168,7 +171,9 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
-  if (eeprom->position == 0)
+  if (!eeprom->selected)
+    return;
+  else if (eeprom->position == 0)
   {
     eeprom->command = value.u;
 
@@ -249,11 +254,18 @@ void h8_eeprom_init(h8_device_t *device, unsigned type)
     device->data = eeprom->data;
     device->size = eeprom->length;
 
-    device->read = h8_eeprom_read;
-    device->write = h8_eeprom_write;
+    device->ssu_in = h8_eeprom_read;
+    device->ssu_out = h8_eeprom_write;
     device->save = h8_eeprom_serialize;
     device->load = h8_eeprom_deserialize;
   }
+}
+
+void h8_eeprom_select_out(h8_device_t *device, const h8_bool on)
+{
+  h8_eeprom_t *m_eeprom = (h8_eeprom_t*)device->device;
+
+  m_eeprom->selected = !on;
 }
 
 void h8_eeprom_init_64k(h8_device_t *device)
