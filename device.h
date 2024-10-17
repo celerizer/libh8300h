@@ -152,10 +152,6 @@ typedef struct h8_device_t
 
 typedef struct h8_software_hookup_t
 {
-  /* An identifier differentiating hooked up devices from each other, so
-   * multiple hookups can be made for one allocated device. */
-  unsigned id;
-
   /* An identifier specifying which of the implemented devices this is */
   h8_device_id type;
 

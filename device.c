@@ -8,7 +8,7 @@
 #include "system.h"
 #include "types.h"
 
-#define DEVICES_END H8_DEVICE_INVALID, 0, 0, { NULL }, { NULL }
+#define DEVICES_END H8_DEVICE_INVALID, 0, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
 {
@@ -18,25 +18,29 @@ static const h8_system_preset_t h8_systems[] =
     { 0x82341b9f, 0 },
     {
       {
-        1, H8_DEVICE_FACTORY_CONTROL, H8_HOOKUP_PORT_1,
+        H8_DEVICE_FACTORY_CONTROL,
+        H8_HOOKUP_PORT_1,
         { h8_factory_control_test_in, NULL, NULL, NULL },
         { NULL, NULL, h8_factory_control_unknown_out, NULL }
       },
 
       {
-        2, H8_DEVICE_LED, H8_HOOKUP_PORT_8,
+        H8_DEVICE_LED,
+        H8_HOOKUP_PORT_8,
         { NULL },
         { h8_led_on_out, h8_led_color_out, NULL }
       },
 
       {
-        3, H8_DEVICE_EEPROM_8K, H8_HOOKUP_PORT_9,
+        H8_DEVICE_EEPROM_8K,
+        H8_HOOKUP_PORT_9,
         { NULL, NULL },
         { h8_eeprom_select_out, NULL }
       },
 
       {
-        4, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B,
+        H8_DEVICE_1BUTTON,
+        H8_HOOKUP_PORT_B,
         { h8_buttons_in_0, NULL },
         { NULL }
       },
@@ -44,20 +48,23 @@ static const h8_system_preset_t h8_systems[] =
       { DEVICES_END }
     }
   },
+
   {
     "NTR-031",
     H8_SYSTEM_NTR_031,
-    { 0x64b40d8d, 0x9321792f, 0 },
+    { 0x64b40d8d /* earlier */, 0x9321792f /* later */, 0 },
     {
       {
-        1, H8_DEVICE_SPI_BUS, H8_HOOKUP_PORT_8,
+        H8_DEVICE_SPI_BUS,
+        H8_HOOKUP_PORT_8,
         { NULL, /** @todo Savedata chip select */ NULL, NULL },
         { NULL }
       },
 
       /* Not actually used in normal operation */
       {
-        2, H8_DEVICE_1BUTTON, H8_HOOKUP_PORT_B,
+        H8_DEVICE_1BUTTON,
+        H8_HOOKUP_PORT_B,
         { h8_buttons_in_0, NULL },
         { NULL }
       },
@@ -70,31 +77,36 @@ static const h8_system_preset_t h8_systems[] =
       { DEVICES_END }
     }
   },
+
   {
     "NTR-032",
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
       {
-        1, H8_DEVICE_LCD, H8_HOOKUP_PORT_1,
+        H8_DEVICE_LCD,
+        H8_HOOKUP_PORT_1,
         { NULL },
         { h8_lcd_select_out, h8_lcd_mode_out, NULL }
       },
 
       {
-        2, H8_DEVICE_EEPROM_64K, H8_HOOKUP_PORT_1,
+        H8_DEVICE_EEPROM_64K,
+        H8_HOOKUP_PORT_1,
         { NULL },
         { NULL, NULL, h8_eeprom_select_out }
       },
 
       {
-        3, H8_DEVICE_BMA150, H8_HOOKUP_PORT_9,
+        H8_DEVICE_BMA150,
+        H8_HOOKUP_PORT_9,
         { NULL },
         { h8_bma150_select_out, NULL }
       },
 
       {
-        4, H8_DEVICE_3BUTTON, H8_HOOKUP_PORT_B,
+        H8_DEVICE_3BUTTON,
+        H8_HOOKUP_PORT_B,
         { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2 },
         { NULL }
       },
@@ -102,7 +114,7 @@ static const h8_system_preset_t h8_systems[] =
       { DEVICES_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, {  } }
+  { NULL, H8_SYSTEM_INVALID, { 0 }, { NULL } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -177,7 +189,7 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
     for (i = 0; i < H8_HOOKUP_MAX; i++)
     {
       const software_hookup_t *hookup = &preset->hookups[i];
-      h8_device_t *device = &system->devices[hookup->id];
+      h8_device_t *device = &system->devices[j];
 
       if (preset->hookups[i].type == H8_DEVICE_INVALID)
         break;
