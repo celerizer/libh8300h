@@ -20,7 +20,7 @@ static const h8_system_preset_t h8_systems[] =
       {
         H8_DEVICE_FACTORY_CONTROL,
         H8_HOOKUP_PORT_1,
-        { h8_factory_control_test_in, NULL, NULL, NULL },
+        { h8_factory_control_test_in, NULL },
         { NULL, NULL, h8_factory_control_unknown_out, NULL }
       },
 
@@ -34,7 +34,7 @@ static const h8_system_preset_t h8_systems[] =
       {
         H8_DEVICE_EEPROM_8K,
         H8_HOOKUP_PORT_9,
-        { NULL, NULL },
+        { NULL },
         { h8_eeprom_select_out, NULL }
       },
 
@@ -94,7 +94,7 @@ static const h8_system_preset_t h8_systems[] =
         H8_DEVICE_EEPROM_64K,
         H8_HOOKUP_PORT_1,
         { NULL },
-        { NULL, NULL, h8_eeprom_select_out }
+        { NULL, NULL, h8_eeprom_select_out, NULL }
       },
 
       {
@@ -107,7 +107,7 @@ static const h8_system_preset_t h8_systems[] =
       {
         H8_DEVICE_3BUTTON,
         H8_HOOKUP_PORT_B,
-        { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2 },
+        { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2, NULL },
         { NULL }
       },
 
