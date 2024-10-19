@@ -157,6 +157,8 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
   case H8_EEPROM_RDSR:
     *dst = eeprom->status.raw;
     break;
+  default:
+    dst->u = 0;
   }
 }
 
@@ -219,14 +221,7 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     {
       if (eeprom->status.flags.wel)
         eeprom->data[eeprom->address.u] = value;
-      eeprom->position = 0;
-      return;
-    }
-    /* Start new payload if next byte is a valid command */
-    else if (value.u < H8_EEPROM_SIZE && value.u != H8_EEPROM_INVALID)
-    {
-      eeprom->position = 0;
-      h8_eeprom_write(device, dst, value);
+      eeprom->address.u++;
       return;
     }
     /* If reading, ensure address only increments after receiving first d/c */
@@ -266,6 +261,8 @@ void h8_eeprom_select_out(h8_device_t *device, const h8_bool on)
   h8_eeprom_t *m_eeprom = (h8_eeprom_t*)device->device;
 
   m_eeprom->selected = !on;
+  if (!m_eeprom->selected)
+    m_eeprom->position = 0;
 }
 
 void h8_eeprom_init_64k(h8_device_t *device)
