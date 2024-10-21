@@ -73,33 +73,60 @@ typedef struct
   h8_byte_t tcwd;
 } h8_wdt_t;
 
+/** 15.3.1 SS Control Register H (SSCRH) */
+typedef union h8_sscrh_t
+{
+  H8_BITFIELD_7
+  (
+    /** SCS Pin Select */
+    h8_u8 css : 2,
+
+    /** SSCK Pin Select */
+    h8_u8 scks : 1,
+
+    /** SOL Write Protect */
+    h8_u8 solp : 1,
+
+    /** Serial Data Output Level Setting */
+    h8_u8 sol : 1,
+
+    /** Serial Data Open-Drain Output Select */
+    h8_u8 soos : 1,
+
+    /** Bidirectional Mode Enable */
+    h8_u8 bide : 1,
+
+    /** Master/Slave Device Select */
+    h8_u8 mss : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_sscrh_t;
 
 /** 15.3.3 SS Mode Register (SSMR) */
 typedef union h8_ssmr_t
 {
-  struct
-  {
+  H8_BITFIELD_7
+  (
     /** Transfer clock rate select 0 */
-    h8_u8 cks0 : 1;
+    h8_u8 cks0 : 1,
 
     /** Transfer clock rate select 1 */
-    h8_u8 cks1 : 1;
+    h8_u8 cks1 : 1,
 
     /** Transfer clock rate select 2 */
-    h8_u8 cks2 : 1;
+    h8_u8 cks2 : 1,
 
-    h8_u8 reserved1 : 1;
-    h8_u8 reserved2 : 1;
+    h8_u8 reserved : 2,
 
     /** Clock Phase Select */
-    h8_u8 cphs : 1;
+    h8_u8 cphs : 1,
 
     /** Clock Polarity Select */
-    h8_u8 cpos : 1;
+    h8_u8 cpos : 1,
 
     /** MSB-First/LSB-First Select */
-    h8_u8 mls : 1;
-  } flags;
+    h8_u8 mls : 1
+  ) flags;
   h8_byte_t raw;
 } h8_ssmr_t;
 
@@ -149,7 +176,7 @@ typedef union h8_sssr_t
 /** @todo Where is SSTRSR? */
 typedef struct
 {
-  h8_byte_t sscrh;
+  h8_sscrh_t sscrh;
   h8_byte_t sscrl;
   h8_ssmr_t ssmr;
   h8_sser_t sser;
@@ -179,15 +206,10 @@ typedef struct
 
 /**
  * 17.3.1 A/D Result Register (ADRR)
- * Mapped to FFBC
+ * Mapped to FFBC / FFBD
  */
 typedef union h8_adrr_t
 {
-  H8_BITFIELD_2
-  (
-    h8_u16 data : 10,
-    h8_u16 reserved : 6
-  ) flags;
   h8_word_be_t raw;
 } h8_adrr_t;
 
