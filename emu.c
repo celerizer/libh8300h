@@ -3,6 +3,9 @@
 
 #include "system.h"
 
+#define H8_DEBUG_PRINT_FETCH 0
+#define H8_DEBUG_PRINT_REGISTERS 0
+
 #define H8_ERROR(a) \
 { \
   system->error_code = a; \
@@ -251,7 +254,7 @@ H8_IN(pdr1i)
 
   for (i = 0; i < 3; i++)
   {
-    if (system->pdr1_in[i].device && system[i].pdr1_in->func)
+    if (system->pdr1_in[i].device && system->pdr1_in[i].func)
     {
       byte->u &= ~(1 << i);
       byte->u |= (system->pdr1_in[i].func(system->pdr1_in[i].device) & 0x01) << i;
@@ -276,7 +279,7 @@ H8_IN(pdr3i)
 
   for (i = 0; i < 3; i++)
   {
-    if (system->pdr3_in[i].device && system[i].pdr3_in->func)
+    if (system->pdr3_in[i].device && system->pdr3_in[i].func)
     {
       byte->u &= ~(1 << i);
       byte->u |= (system->pdr3_in[i].func(system->pdr3_in[i].device) & 0x01) << i;
@@ -289,7 +292,7 @@ H8_OUT(pdr3o)
   unsigned i;
 
   for (i = 0; i < 3; i++)
-    if (system->pdr3_out[i].device && system[i].pdr3_out->func)
+    if (system->pdr3_out[i].device && system->pdr3_out[i].func)
       system->pdr3_out[i].func(system->pdr3_out[i].device, (value.u >> i) & 1);
 
   *byte = value;
@@ -318,7 +321,7 @@ H8_OUT(pdr8o)
   unsigned i;
 
   for (i = 0; i < 3; i++)
-    if (system->pdr8_out[i].device && system[i].pdr8_out->func)
+    if (system->pdr8_out[i].device && system->pdr8_out[i].func)
       system->pdr8_out[i].func(system->pdr8_out[i].device, (value.u >> (i + 2)) & 1);
 
   *byte = value;
@@ -330,7 +333,7 @@ H8_IN(pdr9i)
 
   for (i = 0; i < 4; i++)
   {
-    if (system->pdr9_in[i].device && system[i].pdr9_in->func)
+    if (system->pdr9_in[i].device && system->pdr9_in[i].func)
     {
       byte->u &= ~(1 << i);
       byte->u |= (system->pdr9_in[i].func(system->pdr9_in[i].device) & 0x01) << i;
@@ -343,7 +346,7 @@ H8_OUT(pdr9o)
   unsigned i;
 
   for (i = 0; i < 4; i++)
-    if (system->pdr9_out[i].device && system[i].pdr9_out->func)
+    if (system->pdr9_out[i].device && system->pdr9_out[i].func)
       system->pdr9_out[i].func(system->pdr9_out[i].device, (value.u >> i) & 1);
 
   *byte = value;
@@ -359,10 +362,10 @@ H8_IN(pdrbi)
 
   for (i = 0; i < 6; i++)
   {
-    if (system->pdrb_in[i].device && system[i].pdrb_in->func)
+    if (system->pdrb_in[i].device && system->pdrb_in[i].func)
     {
       byte->u &= ~(1 << i);
-      byte->u |= (system[i].pdrb_in->func(system->pdrb_in[i].device) & 0x01) << i;
+      byte->u |= (system->pdrb_in[i].func(system->pdrb_in[i].device) & 1) << i;
     }
   }
 }
@@ -380,7 +383,9 @@ H8_OUT(pdrbo)
 
 H8_IN(sssri)
 {
+  system->vmem.parts.io1.ssu.sssr.flags.tend = 1;
   system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
+  system->vmem.parts.io1.ssu.sssr.flags.rdrf = 1;
   *byte = system->vmem.parts.io1.ssu.sssr.raw;
 }
 
@@ -433,17 +438,9 @@ H8_OUT(sstdro)
 {
   unsigned i;
 
-  system->vmem.parts.io1.ssu.sssr.flags.tend = 0;
-  system->vmem.parts.io1.ssu.sssr.flags.tdre = 0;
-  system->vmem.parts.io1.ssu.sssr.flags.rdrf = 0;
-
   for (i = 0; i < system->device_count; i++)
     if (system->devices[i].ssu_out)
       system->devices[i].ssu_out(&system->devices[i], byte, value);
-
-  system->vmem.parts.io1.ssu.sssr.flags.tend = 1;
-  system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
-  system->vmem.parts.io1.ssu.sssr.flags.rdrf = 1;
 }
 
 /**
@@ -456,6 +453,18 @@ H8_IN(adsri)
   /** @todo A/DC simply assumes result is done when status is read */
   system->vmem.parts.io2.adc.adsr.flags.adsf = 0;
   *byte = system->vmem.parts.io2.adc.adsr.raw;
+}
+
+H8_IN(adrrhi)
+{
+  system->vmem.parts.io2.adc.adrr.raw.h.u = 0x02;
+  *byte = system->vmem.parts.io2.adc.adrr.raw.h;
+}
+
+H8_IN(adrrli)
+{
+  system->vmem.parts.io2.adc.adrr.raw.l.u = 0x95;
+  *byte = system->vmem.parts.io2.adc.adrr.raw.l;
 }
 
 static H8_IN_T reg_ins[0x160] =
@@ -516,7 +525,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, adsri,
+  NULL, NULL, NULL, NULL, adrrhi, adrrli, NULL, adsri,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -648,15 +657,19 @@ static H8_IN_T h8_register_in(h8_system_t *system, unsigned address)
   if (address >= H8_MEMORY_REGION_IO1 &&
       address < H8_MEMORY_REGION_IO1 + sizeof(system->vmem.parts.io1))
   {
+#if H8_DEBUG_PRINT_REGISTERS
     if (!reg_ins[address - H8_MEMORY_REGION_IO1])
       printf("Better not implement %04X input, BOY\n", address);
+#endif
     return reg_ins[address - H8_MEMORY_REGION_IO1];
   }
   else if (address >= H8_MEMORY_REGION_IO2 &&
            address < H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io2))
   {
+#if H8_DEBUG_PRINT_REGISTERS
     if (!reg_ins[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)])
       printf("Better not implement %04X input, BOY\n", address);
+#endif
     return reg_ins[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)];
   }
   else
@@ -668,15 +681,19 @@ static H8_OUT_T h8_register_out(h8_system_t *system, unsigned address)
   if (address >= H8_MEMORY_REGION_IO1 &&
       address < H8_MEMORY_REGION_IO1 + sizeof(system->vmem.parts.io1))
   {
+#if H8_DEBUG_PRINT_REGISTERS
     if (!reg_outs[address - H8_MEMORY_REGION_IO1])
       printf("Better not implement %04X output, BOY\n", address);
+#endif
     return reg_outs[address - H8_MEMORY_REGION_IO1];
   }
   else if (address >= H8_MEMORY_REGION_IO2 &&
            address < H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io2))
   {
+#if H8_DEBUG_PRINT_REGISTERS
     if (!reg_outs[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)])
       printf("Better not implement %04X output, BOY\n", address);
+#endif
     return reg_outs[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)];
   }
   else
@@ -1265,7 +1282,9 @@ void h8_fetch(h8_system_t *system)
 {
   system->dbus.bits = h8_read_w(system, system->cpu.pc);
   system->cpu.pc += 2;
+#if H8_DEBUG_PRINT_FETCH
   printf("%02X %02X ", system->dbus.a.u, system->dbus.b.u);
+#endif
 }
 
 /**
@@ -1277,6 +1296,8 @@ void h8_fetch(h8_system_t *system)
 H8_OP(op00)
 {
   /** NOP */
+  system->vmem.raw[0xF7C4].u = 1;
+  system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
   (void)system;
 }
 
@@ -2683,6 +2704,7 @@ void h8_init(h8_system_t *system)
   /* Setup default non-zero values */
   system->cpu.ccr.flags.i = 1;
 
+  system->vmem.parts.io1.ssu.sscrh.flags.solp = 1;
   system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
 
   system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
@@ -2694,8 +2716,6 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b6wi = 1;
 
   system->vmem.parts.io2.adc.adsr.flags.reserved = B00111111;
-  /** @todo ; eeprom dump of 8 conversions, div by 8 */
-  system->vmem.parts.io2.adc.adrr.flags.data = 82;
 
   /* Jump to program entrypoint */
   system->cpu.pc = h8_read_w(system, 0).u;
