@@ -136,14 +136,6 @@ void h8_eeprom_free(h8_device_t *device)
     h8_dma_free(((h8_eeprom_t*)device->device)->data);
 }
 
-/**
- * Notes:
- * ntr-032 sends cmd 05, then reads 16 bytes from 0x2470 on boot. address is
- * incremented by sending a 0xff d/c byte
- * 05 FF
- * 03 24 70 FF FF FF FF ...
- */
-
 void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
@@ -166,13 +158,6 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
 
   dst->u = 0;
 }
-
-/**
- * NTR-027
- * 06 02 1B 88 00 05 r FF r ...
- *          A7
- * It repeats this 8 times then starts watching A/D converter?
- */
 
 void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
