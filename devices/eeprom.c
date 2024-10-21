@@ -19,8 +19,9 @@ enum
 
   /**
    * Write
-   * If WEL is on, take an address then write the next byte to it
-   * 4 byte payload
+   * If WEL is on, take an address then write values to it for every byte
+   * afterwards, incrementing the address
+   * 4+ byte payload
    */
   H8_EEPROM_WRITE,
 
