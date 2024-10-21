@@ -62,7 +62,7 @@ typedef struct
   unsigned length;
   h8_word_t address;
   h8_u8 command;
-  h8_u8 position;
+  h8_s8 position;
   h8_bool selected;
   union
   {
@@ -152,14 +152,18 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
   else switch (eeprom->command)
   {
   case H8_EEPROM_READ:
-    *dst = eeprom->data[eeprom->address.u];
+    if (eeprom->position > 3)
+    {
+      *dst = eeprom->data[eeprom->address.u];
+      printf("[EEPROM] read 0x%04X -> %02X\n", eeprom->address.u, dst->u);
+    }
     break;
   case H8_EEPROM_RDSR:
     *dst = eeprom->status.raw;
     break;
-  default:
-    dst->u = 0;
   }
+
+  dst->u = 0;
 }
 
 /**
@@ -174,7 +178,7 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
   if (!eeprom->selected)
-    return;
+    goto end;
   else if (eeprom->position == 0)
   {
     eeprom->command = value.u;
@@ -183,14 +187,14 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     if (eeprom->command == H8_EEPROM_WREN)
     {
       eeprom->status.flags.wel = 1;
-      eeprom->position = 0;
-      return;
+      eeprom->position = -1;
+      goto end;
     }
     else if (eeprom->command == H8_EEPROM_WRDI)
     {
       eeprom->status.flags.wel = 0;
-      eeprom->position = 0;
-      return;
+      eeprom->position = -1;
+      goto end;
     }
   }
   else if (eeprom->position == 1)
@@ -201,15 +205,15 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     case H8_EEPROM_WRITE:
     case H8_EEPROM_READ:
       eeprom->address.h = value;
-      break;
+      goto end;
     case H8_EEPROM_RDSR:
-      eeprom->position = 0;
-      return;
+      eeprom->position = -1;
+      goto end;
     case H8_EEPROM_WRSR:
       if (eeprom->status.flags.wel)
         eeprom->status.raw = value;
-      eeprom->position = 0;
-      return;
+      eeprom->position = -1;
+      goto end;
     }
   }
   else if (eeprom->position == 2)
@@ -220,16 +224,20 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     if (eeprom->command == H8_EEPROM_WRITE)
     {
       if (eeprom->status.flags.wel)
+      {
         eeprom->data[eeprom->address.u] = value;
+        printf("[EEPROM] write 0x%04X -> %02X\n", eeprom->address.u, value.u);
+      }
       eeprom->address.u++;
-      return;
+      goto end;
     }
     /* If reading, ensure address only increments after receiving first d/c */
     else if (eeprom->position != 3)
       eeprom->address.u++;
   }
-  eeprom->position++;
 
+end:
+  eeprom->position++;
   *dst = value;
 }
 
@@ -262,7 +270,10 @@ void h8_eeprom_select_out(h8_device_t *device, const h8_bool on)
 
   m_eeprom->selected = !on;
   if (!m_eeprom->selected)
+  {
     m_eeprom->position = 0;
+    m_eeprom->address.u = 0;
+  }
 }
 
 void h8_eeprom_init_64k(h8_device_t *device)
