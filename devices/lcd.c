@@ -61,6 +61,8 @@ typedef struct
 
   h8_bool x_flip, y_flip;
 
+  h8_bool segment_remap;
+
   /** Various unimplemented parameters */
   h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion;
 
@@ -177,6 +179,12 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0x16:
       case 0x17:
         m_lcd->x = (m_lcd->x & B00001111) | (h8_u8)((value.u & B00000111) << 4);
+        break;
+      case 0xA0:
+        m_lcd->segment_remap = FALSE;
+        break;
+      case 0xA1:
+        m_lcd->segment_remap = TRUE;
         break;
       case 0xA2:
         m_lcd->icon_enable = FALSE;
