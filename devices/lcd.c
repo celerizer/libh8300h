@@ -61,10 +61,11 @@ typedef struct
 
   h8_bool x_flip, y_flip;
 
-  h8_bool segment_remap;
+  h8_bool segment_remap, internal_oscillator, display_on;
 
   /** Various unimplemented parameters */
-  h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion;
+  h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion,
+        dcdc_factor, irr_ratio, lcd_bias, pwm_frc, power_control;
 
   h8_u8 palette_modes[H8_LCD_PALETTE_SIZE];
 
@@ -142,11 +143,12 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       m_lcd->command = value.u;
 
       /**
-       * Await second byte for 4X or 8X commands
+       * Await second byte for 4X, 8X, or FX commands
        * @todo A little more nuanced than this but not for current purposes
        */
       if ((value.u >= 0x40 && value.u <= 0x4F) ||
-          (value.u >= 0x80 && value.u <= 0x8F))
+          (value.u >= 0x80 && value.u <= 0x8F) ||
+          (value.u >= 0xF0))
         m_lcd->second_write_cmd = TRUE;
       else switch (m_lcd->command)
       {
@@ -180,6 +182,52 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0x17:
         m_lcd->x = (m_lcd->x & B00001111) | (h8_u8)((value.u & B00000111) << 4);
         break;
+      case 0x20:
+      case 0x21:
+      case 0x22:
+      case 0x23:
+      case 0x24:
+      case 0x25:
+      case 0x26:
+      case 0x27:
+        m_lcd->irr_ratio = value.u & B00000111;
+        break;
+      case 0x28:
+      case 0x29:
+      case 0x2A:
+      case 0x2B:
+      case 0x2C:
+      case 0x2D:
+      case 0x2E:
+      case 0x2F:
+        m_lcd->power_control = value.u & B00000111;
+        break;
+      case 0x50:
+      case 0x51:
+      case 0x52:
+      case 0x53:
+      case 0x54:
+      case 0x55:
+      case 0x56:
+      case 0x57:
+        m_lcd->lcd_bias = value.u & B00000111;
+        break;
+      case 0x64:
+      case 0x65:
+      case 0x66:
+      case 0x67:
+        m_lcd->dcdc_factor = value.u & B00000011;
+        break;
+      case 0x90:
+      case 0x91:
+      case 0x92:
+      case 0x93:
+      case 0x94:
+      case 0x95:
+      case 0x96:
+      case 0x97:
+        m_lcd->pwm_frc = value.u & B00000111;
+        break;
       case 0xA0:
         m_lcd->segment_remap = FALSE;
         break;
@@ -209,6 +257,15 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
         break;
       case 0xA9:
         m_lcd->power_save_mode_sleep = TRUE;
+        break;
+      case 0xAB:
+        m_lcd->internal_oscillator = TRUE;
+        break;
+      case 0xAE:
+        m_lcd->display_on = FALSE;
+        break;
+      case 0xAF:
+        m_lcd->display_on = TRUE;
         break;
       case 0xB0:
       case 0xB1:
@@ -305,6 +362,24 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0x8E:
       case 0x8F:
         m_lcd->palette_modes[H8_LCD_PALETTE_BLACK] = value.u & B00001111;
+        break;
+      case 0xF0:
+      case 0xF1:
+      case 0xF2:
+      case 0xF3:
+      case 0xF4:
+      case 0xF5:
+      case 0xF6:
+      case 0xF7:
+      case 0xF8:
+      case 0xF9:
+      case 0xFA:
+      case 0xFB:
+      case 0xFC:
+      case 0xFD:
+      case 0xFE:
+      case 0xFF:
+        /** Unknown/custom purpose extended command */
         break;
       default:
         break;
