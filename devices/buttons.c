@@ -15,6 +15,8 @@ static void h8_buttons_init(h8_device_t *device, h8_device_id type)
     device->name = type == H8_DEVICE_1BUTTON ? name_1 : name_3;
     device->type = type;
     device->device = buttons;
+    device->data = buttons->buttons;
+    device->size = buttons->button_count;
   }
 }
 
