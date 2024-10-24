@@ -531,7 +531,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFD0 */
   NULL, NULL, NULL, NULL, pdr1i, NULL, pdr3i, NULL,
-  pdr8i, NULL, NULL, NULL, pdr9i, NULL, pdrbi, NULL,
+  NULL, NULL, NULL, pdr8i, pdr9i, NULL, pdrbi, NULL,
   /* 0xFFE0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -604,7 +604,7 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFD0 */
   NULL, NULL, NULL, NULL, pdr1o, NULL, pdr3o, NULL,
-  pdr8o, NULL, NULL, NULL, pdr9o, NULL, pdrbo, NULL,
+  NULL, NULL, NULL, pdr8o, pdr9o, NULL, pdrbo, NULL,
   /* 0xFFE0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
