@@ -634,7 +634,7 @@ unsigned h8_write(h8_system_t *system, const void *buffer,
                   const unsigned address, const unsigned size,
                   const h8_bool force)
 {
-  if ((address >= 0xfb80 && address < 0xff80) || force)
+  if ((address >= 0xf780 && address < 0xff80) || force)
   {
     memcpy(&system->vmem.raw[address], buffer, size);
     return size;
@@ -646,7 +646,7 @@ unsigned h8_write(h8_system_t *system, const void *buffer,
 void *h8_find(h8_system_t *system, unsigned address)
 {
 #if H8_PROFILING
-  /*if (address >= 0xfb80 && address < 0xff80)*/
+  /*if (address >= 0xf780 && address < 0xff80)*/
     system->reads[address & 0xFFFF] += 1;
 #endif
   return &system->vmem.raw[address & 0xFFFF];

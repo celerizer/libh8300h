@@ -231,8 +231,8 @@ typedef union
     h8_ivat_t ivat;
     h8_byte_t data[0xF020 - 0x0050];
     h8_io1_t io1;
-    h8_byte_t data2[0xFB80 - 0xF100];
-    h8_byte_t ram[0xFF80 - 0xFB80];
+    h8_byte_t data2[0xF780 - 0xF100];
+    h8_byte_t ram[0xFF80 - 0xF780];
     h8_io2_t io2;
   } parts;
   h8_byte_t raw[0x10000];
