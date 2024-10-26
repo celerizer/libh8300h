@@ -47,8 +47,8 @@ void ccr_zn(h8_system_t *system, signed val)
 
 void ccr_v(h8_system_t *system, signed a, signed b, signed c)
 {
-  system->cpu.ccr.flags.v = ((a > 0 && b > 0 && c < 0) ||
-                            (a < 0 && b < 0 && c > 0));
+  system->cpu.ccr.flags.v = ((a >= 0 && b >= 0 && c < 0) ||
+                            (a < 0 && b < 0 && c >= 0));
 }
 
 /**
@@ -89,9 +89,9 @@ type sub##name(h8_system_t *system, type dst, const type src) \
 { \
   type result; \
   result.i = dst.i - src.i; \
-  system->cpu.ccr.flags.c = result.u < src.u; \
+  system->cpu.ccr.flags.c = src.u > dst.u; \
   ccr_zn(system, result.i); \
-  ccr_v(system, dst.i, src.i, result.i); \
+  ccr_v(system, dst.i, -src.i, result.i); \
   system->cpu.ccr.flags.h = (result.u & (1 << hcbit)) != (dst.u & (1 << hcbit)); \
   return result; \
 }
@@ -457,13 +457,13 @@ H8_IN(adsri)
 
 H8_IN(adrrhi)
 {
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0x02;
+  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xFF;
   *byte = system->vmem.parts.io2.adc.adrr.raw.h;
 }
 
 H8_IN(adrrli)
 {
-  system->vmem.parts.io2.adc.adrr.raw.l.u = 0x95;
+  system->vmem.parts.io2.adc.adrr.raw.l.u = 0xC0;
   *byte = system->vmem.parts.io2.adc.adrr.raw.l;
 }
 
@@ -2807,22 +2807,67 @@ void h8_test_add(void)
   src_byte.u = 5;
   result = addb(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
-      system.cpu.ccr.flags.h != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
-      result.i != 15)
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 15)
     H8_TEST_FAIL(1)
 
-  /* 255 + 2 = 1 */
+  /* 255 + 1 = 0 */
   dst_byte.u = 255;
-  src_byte.u = 2;
+  src_byte.u = 1;
   result = addb(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 1 ||
-      system.cpu.ccr.flags.h != 1 ||
-      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.z != 1 ||
       system.cpu.ccr.flags.v != 0 ||
-      result.i != 1)
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 0)
     H8_TEST_FAIL(2)
+
+  /* 127 + 1 = 128 */
+  dst_byte.u = 127;
+  src_byte.u = 1;
+  result = addb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 0 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 1 ||
+      system.cpu.ccr.flags.n != 1 ||
+      result.u != 128)
+    H8_TEST_FAIL(3)
+
+  /* -128 + (-1) = 127 */
+  dst_byte.i = -128;
+  src_byte.i = -1;
+  result = addb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 1 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 1 ||
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 127)
+    H8_TEST_FAIL(4)
+
+  /* 0 + 0 = 0 */
+  dst_byte.u = 0;
+  src_byte.u = 0;
+  result = addb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 0 ||
+      system.cpu.ccr.flags.h != 0 ||
+      system.cpu.ccr.flags.z != 1 ||
+      system.cpu.ccr.flags.v != 0 ||
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 0)
+    H8_TEST_FAIL(5)
+
+  /* 127 + 127 = 254 */
+  dst_byte.u = 127;
+  src_byte.u = 127;
+  result = addb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 0 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 1 ||
+      system.cpu.ccr.flags.n != 1 ||
+      result.u != 254)
+    H8_TEST_FAIL(7)
 
   printf("Addition test passed!\n");
 }
@@ -3047,16 +3092,60 @@ void h8_test_sub(void)
   h8_system_t system = {0};
   h8_byte_t dst_byte, src_byte, result;
 
-  /* 7 - 3 = 4 */
-  dst_byte.u = 7;
-  src_byte.u = 3;
+  /* 15 - 5 = 10 */
+  dst_byte.u = 15;
+  src_byte.u = 5;
   result = subb(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
-      system.cpu.ccr.flags.h != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
-      result.i != 4)
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 10)
     H8_TEST_FAIL(1)
+
+  /* 10 - 10 = 0 */
+  dst_byte.u = 10;
+  src_byte.u = 10;
+  result = subb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 0 ||
+      system.cpu.ccr.flags.z != 1 ||
+      system.cpu.ccr.flags.v != 0 ||
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 0)
+    H8_TEST_FAIL(2)
+
+  /* 1 - 2 = -1 (255) -- Underflow */
+  dst_byte.u = 1;
+  src_byte.u = 2;
+  result = subb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 1 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 0 ||
+      system.cpu.ccr.flags.n != 1 ||
+      result.u != 255)
+    H8_TEST_FAIL(3)
+
+  /* 128 - 1 = 127 */
+  dst_byte.u = 128;
+  src_byte.u = 1;
+  result = subb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 0 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 1 ||
+      system.cpu.ccr.flags.n != 0 ||
+      result.u != 127)
+    H8_TEST_FAIL(4)
+
+  /* 0 - 1 = -1 (255) */
+  dst_byte.u = 0;
+  src_byte.u = 1;
+  result = subb(&system, dst_byte, src_byte);
+  if (system.cpu.ccr.flags.c != 1 ||
+      system.cpu.ccr.flags.z != 0 ||
+      system.cpu.ccr.flags.v != 0 ||
+      system.cpu.ccr.flags.n != 1 ||
+      result.u != 255)
+    H8_TEST_FAIL(5)
 
   printf("Subtraction test passed!\n");
 }
