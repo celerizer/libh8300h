@@ -2707,6 +2707,15 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io1.ssu.sscrh.flags.solp = 1;
   system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
 
+  system->vmem.parts.io1.tw.gra.h.u = 0xFF;
+  system->vmem.parts.io1.tw.gra.l.u = 0xFF;
+  system->vmem.parts.io1.tw.grb.h.u = 0xFF;
+  system->vmem.parts.io1.tw.grb.l.u = 0xFF;
+  system->vmem.parts.io1.tw.grc.h.u = 0xFF;
+  system->vmem.parts.io1.tw.grc.l.u = 0xFF;
+  system->vmem.parts.io1.tw.grd.h.u = 0xFF;
+  system->vmem.parts.io1.tw.grd.l.u = 0xFF;
+
   system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
 
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b0wi = 1;
