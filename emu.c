@@ -711,6 +711,9 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
   H8_IN_T in = h8_register_in(system, address);
   h8_byte_t *byte = h8_find(system, address);
 
+  system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
+  system->vmem.raw[0xF7C4].u = 1;
+
   if (in)
     in(system, byte);
 
@@ -1181,9 +1184,8 @@ H8_NEG_OP(l, h8_long_t)
 #define H8_CMP_OP(name, type) \
 type cmp##name(h8_system_t *system, type dst, const type src) \
 { \
-  type tmp = dst; \
   sub##name(system, dst, src); \
-  return tmp; \
+  return dst; \
 }
 H8_CMP_OP(b, h8_byte_t)
 H8_CMP_OP(w, h8_word_t)
@@ -1296,8 +1298,6 @@ void h8_fetch(h8_system_t *system)
 H8_OP(op00)
 {
   /** NOP */
-  system->vmem.raw[0xF7C4].u = 1;
-  system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
   (void)system;
 }
 
@@ -1866,13 +1866,15 @@ H8_OP(op1b)
 H8_OP(op1c)
 {
   /** CMP.B Rs, Rd */
-  cmpb(system, *rd_b(system, system->dbus.bh), *rd_b(system, system->dbus.bl));
+  rs_rd_b(system, *rd_b(system, system->dbus.bh),
+          rd_b(system, system->dbus.bl), cmpb);
 }
 
 H8_OP(op1d)
 {
   /** CMP.W Rs, Rd */
-  cmpw(system, *rd_w(system, system->dbus.bh), *rd_w(system, system->dbus.bl));
+  rs_rd_w(system, *rd_w(system, system->dbus.bh),
+          rd_w(system, system->dbus.bl), cmpw);
 }
 
 H8_OP(op1f)
@@ -1882,7 +1884,8 @@ H8_OP(op1f)
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
   else if (system->dbus.bh & B1000)
     /** CMP.L ERs, ERd */
-    cmpl(system, *rd_l(system, system->dbus.bh), *rd_l(system, system->dbus.bl));
+    rs_rd_l(system, *rd_l(system, system->dbus.bh),
+            rd_l(system, system->dbus.bl), cmpl);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -2655,7 +2658,7 @@ H8_UNROLL(OP9X)
 void opa##al(h8_system_t *system) \
 { \
   /** CMP.B #xx:8, Rd */ \
-  cmpb(system, system->dbus.b, reg); \
+  rs_rd_b(system, system->dbus.b, &reg, cmpb); \
 }
 H8_UNROLL(OPAX)
 

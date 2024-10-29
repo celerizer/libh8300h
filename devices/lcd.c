@@ -122,9 +122,11 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
   else if (m_lcd->data_mode)
   {
     /* Data mode write -- plot pixels */
-    m_lcd->vram[m_lcd->y * 0x0100 +
-                m_lcd->x * 2 +
-                m_lcd->second_write_data ? 1 : 0] = value.u;
+    unsigned offset = m_lcd->y * 0x0100 +
+                      m_lcd->x * 2 +
+                      (m_lcd->second_write_data ? 1 : 0);
+
+    m_lcd->vram[offset] = value.u;
 
     /* If we are writing the second byte, increment only the X address */
     if (m_lcd->second_write_data)
@@ -418,6 +420,7 @@ void h8_lcd_init(h8_device_t *device)
     device->ssu_in = h8_lcd_read;
     device->ssu_out = h8_lcd_write;
     device->data = m_lcd->vram;
+    device->size = sizeof(m_lcd->vram);
     device->name = name;
     device->type = type;
   }

@@ -1,6 +1,7 @@
 #include "../dma.h"
 #include "eeprom.h"
 
+#include <stdio.h>
 #include <string.h>
 
 static const char *name_8k = "8KB EEPROM device";
@@ -149,11 +150,12 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
     {
       *dst = eeprom->data[eeprom->address.u];
       printf("[EEPROM] read 0x%04X -> %02X\n", eeprom->address.u, dst->u);
+      return;
     }
     break;
   case H8_EEPROM_RDSR:
     *dst = eeprom->status.raw;
-    break;
+    return;
   }
 
   dst->u = 0;
