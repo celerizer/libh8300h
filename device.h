@@ -11,10 +11,13 @@ typedef enum
 {
   H8_DEVICE_INVALID = 0,
 
-  /* 8KB generic EEPROM device */
+  /* A device using only generic implementations */
+  H8_DEVICE_GENERIC,
+
+  /* 8KB EEPROM device */
   H8_DEVICE_EEPROM_8K,
 
-  /* 64KB generic EEPROM device */
+  /* 64KB EEPROM device */
   H8_DEVICE_EEPROM_64K,
 
   /* Bosch Sensortec - Digital, triaxial acceleration sensor */
