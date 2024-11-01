@@ -3,6 +3,7 @@
 #include "devices/buttons.h"
 #include "devices/eeprom.h"
 #include "devices/factory_control.h"
+#include "devices/generic.h"
 #include "devices/lcd.h"
 #include "devices/led.h"
 #include "system.h"
@@ -123,6 +124,9 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
   {
     switch (type)
     {
+    case H8_DEVICE_GENERIC:
+      device->init = h8_generic_init;
+      break;
     case H8_DEVICE_1BUTTON:
       device->init = h8_buttons_init_1b;
       break;
