@@ -6,6 +6,7 @@ H8_SOURCES := \
   $(H8_ROOT_DIR)/devices/buttons.c \
   $(H8_ROOT_DIR)/devices/eeprom.c \
   $(H8_ROOT_DIR)/devices/factory_control.c \
+  $(H8_ROOT_DIR)/devices/generic.c \
   $(H8_ROOT_DIR)/devices/lcd.c \
   $(H8_ROOT_DIR)/devices/led.c \
   $(H8_ROOT_DIR)/dma.c \
@@ -19,6 +20,7 @@ H8_HEADERS := \
   $(H8_ROOT_DIR)/devices/buttons.h \
   $(H8_ROOT_DIR)/devices/eeprom.h \
   $(H8_ROOT_DIR)/devices/factory_control.h \
+  $(H8_ROOT_DIR)/devices/generic.h \
   $(H8_ROOT_DIR)/devices/lcd.h \
   $(H8_ROOT_DIR)/devices/led.h \
   $(H8_ROOT_DIR)/dma.h \
