@@ -149,7 +149,10 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
     if (eeprom->position > 3)
     {
       *dst = eeprom->data[eeprom->address.u];
-      printf("[EEPROM] read 0x%04X -> %02X\n", eeprom->address.u, dst->u);
+      printf("[EEPROM] read 0x%04X -> %02X", eeprom->address.u, dst->u);
+      if (dst->u >= 0x20 && dst->u <= 0x7E)
+        printf(" '%c'", dst->i);
+      printf("\n");
       return;
     }
     break;
@@ -214,7 +217,10 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       if (eeprom->status.flags.wel)
       {
         eeprom->data[eeprom->address.u] = value;
-        printf("[EEPROM] write 0x%04X -> %02X\n", eeprom->address.u, value.u);
+        printf("[EEPROM] write 0x%04X -> %02X", eeprom->address.u, value.u);
+        if (value.u >= 0x20 && value.u <= 0x7E)
+          printf(" '%c'", value.i);
+        printf("\n");
       }
       eeprom->address.u++;
       goto end;
