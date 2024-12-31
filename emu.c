@@ -2262,14 +2262,22 @@ H8_OP(op67)
 
 H8_OP(op68)
 {
-  /** MOV.B @ERs, Rd */
-  ms_rd_b(system, er(system, system->dbus.bh), rd_b(system, system->dbus.bl), movb);
+  if (system->dbus.bh & B1000)
+    /** MOV.B Rs, @ERd */
+    rs_md_b(system, *rd_b(system, system->dbus.bl), er(system, system->dbus.bh), movb);
+  else
+    /** MOV.B @ERs, Rd */
+    ms_rd_b(system, er(system, system->dbus.bh), rd_b(system, system->dbus.bl), movb);
 }
 
 H8_OP(op69)
 {
-  /** MOV.W @ERs, Rd */
-  ms_rd_w(system, er(system, system->dbus.bh), rd_w(system, system->dbus.bl), movw);
+  if (system->dbus.bh & B1000)
+    /** MOV.W Rs, @ERd */
+    rs_md_w(system, *rd_w(system, system->dbus.bl), er(system, system->dbus.bh), movw);
+  else
+    /** MOV.W @ERs, Rd */
+    ms_rd_w(system, er(system, system->dbus.bh), rd_w(system, system->dbus.bl), movw);
 }
 
 H8_OP(op6a)
