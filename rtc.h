@@ -13,8 +13,8 @@
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_3
+  (
     /**
      * RTC Busy.
      * This bit is set to 1 when the RTC is updating (operating) the values of
@@ -22,15 +22,15 @@ typedef union
      * 0, the values of second, minute, hour, and day-of-week data registers
      * must be adopted.
      */
-    h8_u8 bsy : 1;
+    h8_u8 bsy : 1,
 
     /** Counting Ten's Position. Counts from 0-5. */
-    h8_u8 ct : 3;
+    h8_u8 ct : 3,
 
     /** Counting One's Position. Counts from 0-9. */
-    h8_u8 co : 4;
-  };
-  h8_u8 bits;
+    h8_u8 co : 4
+  ) flags;
+  h8_byte_t raw;
 } h8_rsecdr_t;
 
 /**
@@ -40,8 +40,8 @@ typedef union
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_3
+  (
     /**
      * RTC Busy.
      * This bit is set to 1 when the RTC is updating (operating) the values of
@@ -49,15 +49,15 @@ typedef union
      * 0, the values of second, minute, hour, and day-of-week data registers
      * must be adopted.
      */
-    h8_u8 bsy : 1;
+    h8_u8 bsy : 1,
 
     /** Counting Ten's Position. Counts from 0-5. */
-    h8_u8 ct : 3;
+    h8_u8 ct : 3,
 
     /** Counting One's Position. Counts from 0-9. */
-    h8_u8 co : 4;
-  };
-  h8_u8 bits;
+    h8_u8 co : 4
+  ) flags;
+  h8_byte_t raw;
 } h8_rmindr_t;
 
 /**
@@ -68,8 +68,8 @@ typedef union
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_4
+  (
     /**
      * RTC Busy.
      * This bit is set to 1 when the RTC is updating (operating) the values of
@@ -77,18 +77,18 @@ typedef union
      * 0, the values of second, minute, hour, and day-of-week data registers
      * must be adopted.
      */
-    h8_u8 bsy : 1;
+    h8_u8 bsy : 1,
 
     /** Reserved. This bit is always read as 0. */
-    h8_u8 r : 1;
+    h8_u8 r : 1,
 
     /** Counting Ten's Position. Counts from 0-2. */
-    h8_u8 ct : 2;
+    h8_u8 ct : 2,
 
     /** Counting One's Position. Counts from 0-9. */
-    h8_u8 co : 4;
-  };
-  h8_u8 bits;
+    h8_u8 co : 4
+  ) flags;
+  h8_byte_t raw;
 } h8_rhrdr_t;
 
 enum
@@ -111,8 +111,8 @@ enum
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_3
+  (
     /**
      * RTC Busy.
      * This bit is set to 1 when the RTC is updating (operating) the values of
@@ -120,21 +120,21 @@ typedef union
      * 0, the values of second, minute, hour, and day-of-week data registers
      * must be adopted.
      */
-    h8_u8 bsy : 1;
+    h8_u8 bsy : 1,
 
     /** Reserved. These bits are always read as 0. */
-    h8_u8 r : 4;
+    h8_u8 r : 4,
 
     /** Day-of-Week Counting. Counts from 0-6. */
-    h8_u8 wk : 3;
-  };
-  h8_u8 bits;
+    h8_u8 wk : 3
+  ) flags;
+  h8_byte_t raw;
 } h8_rwkdr_t;
 
 enum
 {
   H8_RTC_12H = 0,
-  H8_RTC_24H
+  H8_RTC_24H = 1
 };
 
 /**
@@ -142,48 +142,48 @@ enum
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_6
+  (
     /** RTC Operation Start. Represents whether RTC is active. */
-    h8_u8 run : 1;
+    h8_u8 run : 1,
 
     /** Operating Mode. Using 24H mode when set. */
-    h8_u8 om : 1;
+    h8_u8 om : 1,
 
     /** AM/PM. Set when after noon in 12H mode. */
-    h8_u8 pm : 1;
+    h8_u8 pm : 1,
 
     /**
      * Reset. Resets registers and control circuits except RTCCSR and this
      * bit. Clear this bit to 0 after having been set to 1.
      */
-    h8_u8 rst : 1;
+    h8_u8 rst : 1,
 
     /** Interrupt Occurrence Timing. @todo */
-    h8_u8 intr : 1;
+    h8_u8 intr : 1,
 
     /** Reserved. These bits are always read as 0. */
-    h8_u8 r : 3;
-  };
-  h8_u8 bits;
+    h8_u8 r : 3
+  ) flags;
+  h8_byte_t raw;
 } h8_rtccr1_t;
 
 /** RTCCR2. @todo Not particularly needed for an emulator. */
 typedef union
 {
-  h8_u8 bits;
+  h8_byte_t raw;
 } h8_rtccr2_t;
 
 /** RTCCSR. @todo Not particularly needed for an emulator. */
 typedef union
 {
-  h8_u8 bits;
+  h8_byte_t raw;
 } h8_rtccsr_t;
 
 /** RTCFLG. @todo Not particularly needed for an emulator. */
 typedef union
 {
-  h8_u8 bits;
+  h8_byte_t raw;
 } h8_rtcflg_t;
 
 typedef struct

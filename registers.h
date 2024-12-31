@@ -10,32 +10,32 @@
  */
 typedef union
 {
-  struct
-  {
+  H8_BITFIELD_8
+  (
     /** Program */
-    h8_u8 p : 1;
+    h8_u8 p : 1,
 
     /** Erase */
-    h8_u8 e : 1;
+    h8_u8 e : 1,
 
     /** Program-Verify */
-    h8_u8 pv : 1;
+    h8_u8 pv : 1,
 
     /** Erase-Verify */
-    h8_u8 ev : 1;
+    h8_u8 ev : 1,
 
     /** Program Setup */
-    h8_u8 psu : 1;
+    h8_u8 psu : 1,
 
     /** Erase Setup */
-    h8_u8 esu : 1;
+    h8_u8 esu : 1,
 
     /** Software Write Enable */
-    h8_u8 swe : 1;
+    h8_u8 swe : 1,
 
     /** Reserved */
-    h8_u8 r : 1;
-  } flags;
+    h8_u8 r : 1
+  ) flags;
   h8_byte_t raw;
 } h8_flmcr1_t;
 
