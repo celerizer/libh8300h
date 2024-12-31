@@ -84,6 +84,13 @@ H8_ADD_OP(b, h8_byte_t, 4)
 H8_ADD_OP(w, h8_word_t, 12)
 H8_ADD_OP(l, h8_long_t, 28)
 
+/** Add immediate without modifying status bits */
+void adds_l(h8_system_t *system, h8_long_t *dst, const unsigned src)
+{
+  H8_UNUSED(system);
+  dst->u = dst->u + src;
+}
+
 #define H8_SUB_OP(name, type, hcbit) \
 type sub##name(h8_system_t *system, type dst, const type src) \
 { \
@@ -98,6 +105,13 @@ type sub##name(h8_system_t *system, type dst, const type src) \
 H8_SUB_OP(b, h8_byte_t, 4)
 H8_SUB_OP(w, h8_word_t, 12)
 H8_SUB_OP(l, h8_long_t, 28)
+
+/** Subtract immediate without modifying status bits */
+void subs_l(h8_system_t *system, h8_long_t *dst, const unsigned src)
+{
+  H8_UNUSED(system);
+  dst->i = dst->i - src;
+}
 
 static void daa_b(h8_system_t *system, h8_byte_t *dst)
 {
@@ -1520,8 +1534,7 @@ H8_OP(op0b)
   {
   case 0x0:
     /** @todo Verify ADDS.L #1, ERd */
-    l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), addl);
+    adds_l(system, rd_l(system, system->dbus.bl), 1);
     break;
   case 0x5:
     /** INC.W #1, Rd */
@@ -1535,13 +1548,11 @@ H8_OP(op0b)
     break;
   case 0x8:
     /** @todo Verify ADDS.L #2, ERd */
-    l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), addl);
+    adds_l(system, rd_l(system, system->dbus.bl), 2);
     break;
   case 0x9:
     /** @todo Verify ADDS.L #4, ERd */
-    l.u = 4;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), addl);
+    adds_l(system, rd_l(system, system->dbus.bl), 4);
     break;
   case 0xD:
     /** INC.W #2, Rd */
@@ -1825,8 +1836,7 @@ H8_OP(op1b)
   {
   case 0x0:
     /** SUBS.L #1, ERd */
-    l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), subl);
+    subs_l(system, rd_l(system, system->dbus.bl), 1);
     break;
   case 0x5:
     /** DEC.W #1, Rd */
@@ -1840,13 +1850,11 @@ H8_OP(op1b)
     break;
   case 0x8:
     /** SUBS.L #2, ERd */
-    l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), subl);
+    subs_l(system, rd_l(system, system->dbus.bl), 2);
     break;
   case 0x9:
     /** SUBS.L #4, ERd */
-    l.u = 4;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), subl);
+    subs_l(system, rd_l(system, system->dbus.bl), 4);
     break;
   case 0xD:
     /** DEC.W #2, Rd */
