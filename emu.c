@@ -59,7 +59,7 @@ void ccr_v(h8_system_t *system, signed a, signed b, signed c)
 
 #define H8_MOV_OP(name, type, hcbit) \
 /** Moves a type from one location to another */ \
-type mov##name(h8_system_t *system, type dst, const type src) \
+type mov_##name(h8_system_t *system, type dst, const type src) \
 { \
   H8_UNUSED(dst); \
   ccr_zn(system, src.i); \
@@ -70,7 +70,7 @@ H8_MOV_OP(w, h8_word_t, 12)
 H8_MOV_OP(l, h8_long_t, 28)
 
 #define H8_ADD_OP(name, type, hcbit) \
-type add##name(h8_system_t *system, type dst, const type src) \
+type add_##name(h8_system_t *system, type dst, const type src) \
 { \
   type result; \
   result.i = dst.i + src.i; \
@@ -92,7 +92,7 @@ void adds_l(h8_system_t *system, h8_long_t *dst, const unsigned src)
 }
 
 #define H8_SUB_OP(name, type, hcbit) \
-type sub##name(h8_system_t *system, type dst, const type src) \
+type sub_##name(h8_system_t *system, type dst, const type src) \
 { \
   type result; \
   result.i = dst.i - src.i; \
@@ -1141,7 +1141,7 @@ h8_long_t divxs_w(h8_system_t *system, h8_long_t top, h8_word_t bottom)
 }
 
 #define H8_AND_OP(name, type) \
-type and##name(h8_system_t *system, type dst, const type src) \
+type and_##name(h8_system_t *system, type dst, const type src) \
 { \
   dst.u &= src.u; \
   ccr_zn(system, dst.i); \
@@ -1152,7 +1152,7 @@ H8_AND_OP(w, h8_word_t)
 H8_AND_OP(l, h8_long_t)
 
 #define H8_OR_OP(name, type) \
-type or##name(h8_system_t *system, type dst, const type src) \
+type or_##name(h8_system_t *system, type dst, const type src) \
 { \
   dst.u |= src.u; \
   ccr_zn(system, dst.i); \
@@ -1163,7 +1163,7 @@ H8_OR_OP(w, h8_word_t)
 H8_OR_OP(l, h8_long_t)
 
 #define H8_XOR_OP(name, type) \
-type xor##name(h8_system_t *system, type dst, const type src) \
+type xor_##name(h8_system_t *system, type dst, const type src) \
 { \
   dst.u ^= src.u; \
   ccr_zn(system, dst.i); \
@@ -1174,7 +1174,7 @@ H8_XOR_OP(w, h8_word_t)
 H8_XOR_OP(l, h8_long_t)
 
 #define H8_NOT_OP(name, type) \
-void not##name(h8_system_t *system, type *dst) \
+void not_##name(h8_system_t *system, type *dst) \
 { \
   dst->u = ~dst->u; \
   ccr_zn(system, dst->i); \
@@ -1184,7 +1184,7 @@ H8_NOT_OP(w, h8_word_t)
 H8_NOT_OP(l, h8_long_t)
 
 #define H8_NEG_OP(name, type) \
-void neg##name(h8_system_t *system, type *src) \
+void neg_##name(h8_system_t *system, type *src) \
 { \
   src->i = 0 - src->i; \
   ccr_zn(system, src->i); \
@@ -1196,9 +1196,9 @@ H8_NEG_OP(l, h8_long_t)
 
 /** @todo Hacky */
 #define H8_CMP_OP(name, type) \
-type cmp##name(h8_system_t *system, type dst, const type src) \
+type cmp_##name(h8_system_t *system, type dst, const type src) \
 { \
-  sub##name(system, dst, src); \
+  sub_##name(system, dst, src); \
   return dst; \
 }
 H8_CMP_OP(b, h8_byte_t)
@@ -1327,7 +1327,7 @@ H8_OP(op01)
     {
     case 0x69:
       /** MOV.L ERs, @ERd */
-      rs_md_l(system, *rd_l(system, system->dbus.bl), er(system, system->dbus.bh), movl);
+      rs_md_l(system, *rd_l(system, system->dbus.bl), er(system, system->dbus.bh), mov_l);
       break;
     case 0x6B:
     {
@@ -1339,7 +1339,7 @@ H8_OP(op01)
         h8_u8 erd = system->dbus.bl;
 
         h8_fetch(system);
-        ms_rd_l(system, aa16(system->dbus.bits), rd_l(system, erd), movl);
+        ms_rd_l(system, aa16(system->dbus.bits), rd_l(system, erd), mov_l);
         break;
       }
       case 0x2:
@@ -1352,7 +1352,7 @@ H8_OP(op01)
         h8_fetch(system);
         if (ers)
           /** MOV.L ERs, @aa:16 */
-          rs_md_l(system, *rd_l(system, ers), system->dbus.bits.u, movl);
+          rs_md_l(system, *rd_l(system, ers), system->dbus.bits.u, mov_l);
         else
         {
           /** STC.W CCR, @aa:16 */
@@ -1373,10 +1373,10 @@ H8_OP(op01)
     case 0x6D:
       if (system->dbus.bh & B1000)
         /** MOV.L ERs, @-ERd */
-        rs_md_l(system, *rd_l(system, system->dbus.bl), erpd_l(system, system->dbus.bh), movl);
+        rs_md_l(system, *rd_l(system, system->dbus.bl), erpd_l(system, system->dbus.bh), mov_l);
       else
         /** MOV.L @ERs+, ERd */
-        ms_rd_l(system, erpi_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), movl);
+        ms_rd_l(system, erpi_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), mov_l);
       break;
     case 0x6F:
     {
@@ -1385,10 +1385,10 @@ H8_OP(op01)
       h8_fetch(system);
       if (sd.h & B1000)
         /** MOV.L ERs, @(d:16, ERd) */
-        rs_md_l(system, *rd_l(system, sd.l), erd16(system, sd.h, system->dbus.bits.i), movl);
+        rs_md_l(system, *rd_l(system, sd.l), erd16(system, sd.h, system->dbus.bits.i), mov_l);
       else
         /** MOV.L @(d:16, ERs), ERd */
-        ms_rd_l(system, erd16(system, sd.h, system->dbus.bits.i), rd_l(system, sd.l), movl);
+        ms_rd_l(system, erd16(system, sd.h, system->dbus.bits.i), rd_l(system, sd.l), mov_l);
       break;
     }
     case 0x78:
@@ -1499,13 +1499,13 @@ H8_OP(op07)
 H8_OP(op08)
 {
   /** ADD.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), addb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), add_b);
 }
 
 H8_OP(op09)
 {
   /** ADD.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), addw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), add_w);
 }
 
 H8_OP(op0a)
@@ -1516,11 +1516,11 @@ H8_OP(op0a)
     h8_byte_t b;
 
     b.i = 1;
-    rs_rd_b(system, b, rd_b(system, system->dbus.bl), addb);
+    rs_rd_b(system, b, rd_b(system, system->dbus.bl), add_b);
   }
   else if (system->dbus.bh & B1000)
     /** ADD.L ERs, ERd */
-    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), addl);
+    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), add_l);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -1539,12 +1539,12 @@ H8_OP(op0b)
   case 0x5:
     /** INC.W #1, Rd */
     w.u = 1;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), addw);
+    rs_rd_w(system, w, rd_w(system, system->dbus.bl), add_w);
     break;
   case 0x7:
     /** INC.L #1, ERd */
     l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), addl);
+    rs_rd_l(system, l, rd_l(system, system->dbus.bl), add_l);
     break;
   case 0x8:
     /** @todo Verify ADDS.L #2, ERd */
@@ -1557,12 +1557,12 @@ H8_OP(op0b)
   case 0xD:
     /** INC.W #2, Rd */
     w.u = 2;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), addw);
+    rs_rd_w(system, w, rd_w(system, system->dbus.bl), add_w);
     break;
   case 0xF:
     /** INC.L #2, ERd */
     l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), addl);
+    rs_rd_l(system, l, rd_l(system, system->dbus.bl), add_l);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1572,13 +1572,13 @@ H8_OP(op0b)
 H8_OP(op0c)
 {
   /** MOV.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), movb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), mov_b);
 }
 
 H8_OP(op0d)
 {
   /** MOV.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), movw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), mov_w);
 }
 
 H8_OP(op0e)
@@ -1594,7 +1594,7 @@ H8_OP(op0f)
     daa_b(system, rd_b(system, system->dbus.bl));
   else if (system->dbus.bh & B1000)
     /** MOV.L ERs, ERd */
-    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), movl);
+    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), mov_l);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -1734,19 +1734,19 @@ H8_OP(op13)
 H8_OP(op14)
 {
   /** OR.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), orb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), or_b);
 }
 
 H8_OP(op15)
 {
   /** XOR.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), xorb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), xor_b);
 }
 
 H8_OP(op16)
 {
   /** AND.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), andb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), and_b);
 }
 
 H8_OP(op17)
@@ -1755,15 +1755,15 @@ H8_OP(op17)
   {
   case 0x0:
     /** NOT.B Rd */
-    notb(system, rd_b(system, system->dbus.bl));
+    not_b(system, rd_b(system, system->dbus.bl));
     break;
   case 0x1:
     /** NOT.W Rd */
-    notw(system, rd_w(system, system->dbus.bl));
+    not_w(system, rd_w(system, system->dbus.bl));
     break;
   case 0x3:
     /** NOT.L ERd */
-    notl(system, rd_l(system, system->dbus.bl));
+    not_l(system, rd_l(system, system->dbus.bl));
     break;
   case 0x5:
     /** EXTU.W Rd */
@@ -1775,15 +1775,15 @@ H8_OP(op17)
     break;
   case 0x8:
     /** NEG.B Rd */
-    negb(system, rd_b(system, system->dbus.bl));
+    neg_b(system, rd_b(system, system->dbus.bl));
     break;
   case 0x9:
     /** NEG.W Rd */
-    negw(system, rd_w(system, system->dbus.bl));
+    neg_w(system, rd_w(system, system->dbus.bl));
     break;
   case 0xB:
     /** NEG.L ERd */
-    negl(system, rd_l(system, system->dbus.bl));
+    neg_l(system, rd_l(system, system->dbus.bl));
     break;
   case 0xD:
     /** EXTS.W Rd */
@@ -1801,13 +1801,13 @@ H8_OP(op17)
 H8_OP(op18)
 {
   /** SUB.B Rs, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), subb);
+  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), sub_b);
 }
 
 H8_OP(op19)
 {
   /** SUB.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), subw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), sub_w);
 }
 
 H8_OP(op1a)
@@ -1818,11 +1818,11 @@ H8_OP(op1a)
     h8_byte_t b;
 
     b.i = 1;
-    rs_rd_b(system, b, rd_b(system, system->dbus.bl), subb);
+    rs_rd_b(system, b, rd_b(system, system->dbus.bl), sub_b);
   }
   else if (system->dbus.bh & B1000)
     /** SUB.L ERs, ERd */
-    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), subl);
+    rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), sub_l);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -1841,12 +1841,12 @@ H8_OP(op1b)
   case 0x5:
     /** DEC.W #1, Rd */
     w.u = 1;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), subw);
+    rs_rd_w(system, w, rd_w(system, system->dbus.bl), sub_w);
     break;
   case 0x7:
     /** DEC.L #1, ERd */
     l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), subl);
+    rs_rd_l(system, l, rd_l(system, system->dbus.bl), sub_l);
     break;
   case 0x8:
     /** SUBS.L #2, ERd */
@@ -1859,12 +1859,12 @@ H8_OP(op1b)
   case 0xD:
     /** DEC.W #2, Rd */
     w.u = 2;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), subw);
+    rs_rd_w(system, w, rd_w(system, system->dbus.bl), sub_w);
     break;
   case 0xF:
     /** DEC.L #2, ERd */
     l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), subl);
+    rs_rd_l(system, l, rd_l(system, system->dbus.bl), sub_l);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1875,14 +1875,14 @@ H8_OP(op1c)
 {
   /** CMP.B Rs, Rd */
   rs_rd_b(system, *rd_b(system, system->dbus.bh),
-          rd_b(system, system->dbus.bl), cmpb);
+          rd_b(system, system->dbus.bl), cmp_b);
 }
 
 H8_OP(op1d)
 {
   /** CMP.W Rs, Rd */
   rs_rd_w(system, *rd_w(system, system->dbus.bh),
-          rd_w(system, system->dbus.bl), cmpw);
+          rd_w(system, system->dbus.bl), cmp_w);
 }
 
 H8_OP(op1f)
@@ -1893,7 +1893,7 @@ H8_OP(op1f)
   else if (system->dbus.bh & B1000)
     /** CMP.L ERs, ERd */
     rs_rd_l(system, *rd_l(system, system->dbus.bh),
-            rd_l(system, system->dbus.bl), cmpl);
+            rd_l(system, system->dbus.bl), cmp_l);
   else
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
@@ -1902,7 +1902,7 @@ H8_OP(op1f)
 void op2##al(h8_system_t *system) \
 { \
   /** MOV.B @aa:8, Rd */ \
-  ms_rd_b(system, aa8(system->dbus.b), &reg, movb); \
+  ms_rd_b(system, aa8(system->dbus.b), &reg, mov_b); \
 }
 H8_UNROLL(OP2X)
 
@@ -1910,7 +1910,7 @@ H8_UNROLL(OP2X)
 void op3##al(h8_system_t *system) \
 { \
   /** MOV.B Rs, @aa:8 */ \
-  rs_md_b(system, reg, aa8(system->dbus.b), movb); \
+  rs_md_b(system, reg, aa8(system->dbus.b), mov_b); \
 }
 H8_UNROLL(OP3X)
 
@@ -2237,19 +2237,19 @@ H8_OP(op63)
 H8_OP(op64)
 {
   /** OR.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), orw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), or_w);
 }
 
 H8_OP(op65)
 {
   /** XOR.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), xorw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), xor_w);
 }
 
 H8_OP(op66)
 {
   /** AND.W Rs, Rd */
-  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), andw);
+  rs_rd_w(system, *rd_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), and_w);
 }
 
 H8_OP(op67)
@@ -2264,20 +2264,20 @@ H8_OP(op68)
 {
   if (system->dbus.bh & B1000)
     /** MOV.B Rs, @ERd */
-    rs_md_b(system, *rd_b(system, system->dbus.bl), er(system, system->dbus.bh), movb);
+    rs_md_b(system, *rd_b(system, system->dbus.bl), er(system, system->dbus.bh), mov_b);
   else
     /** MOV.B @ERs, Rd */
-    ms_rd_b(system, er(system, system->dbus.bh), rd_b(system, system->dbus.bl), movb);
+    ms_rd_b(system, er(system, system->dbus.bh), rd_b(system, system->dbus.bl), mov_b);
 }
 
 H8_OP(op69)
 {
   if (system->dbus.bh & B1000)
     /** MOV.W Rs, @ERd */
-    rs_md_w(system, *rd_w(system, system->dbus.bl), er(system, system->dbus.bh), movw);
+    rs_md_w(system, *rd_w(system, system->dbus.bl), er(system, system->dbus.bh), mov_w);
   else
     /** MOV.W @ERs, Rd */
-    ms_rd_w(system, er(system, system->dbus.bh), rd_w(system, system->dbus.bl), movw);
+    ms_rd_w(system, er(system, system->dbus.bh), rd_w(system, system->dbus.bl), mov_w);
 }
 
 H8_OP(op6a)
@@ -2289,7 +2289,7 @@ H8_OP(op6a)
   {
   case 0x0:
     /** MOV.B @aa:16, Rd */
-    ms_rd_b(system, system->dbus.bits.u, rd_b(system, func.l.l), movb);
+    ms_rd_b(system, system->dbus.bits.u, rd_b(system, func.l.l), mov_b);
     break;
   case 0x2:
     /** MOV.B @aa:24, Rd */
@@ -2301,7 +2301,7 @@ H8_OP(op6a)
     break;
   case 0x8:
     /** MOV.B Rs, @aa:16 */
-    rs_md_b(system, *rd_b(system, func.l.l), system->dbus.bits.u, movb);
+    rs_md_b(system, *rd_b(system, func.l.l), system->dbus.bits.u, mov_b);
     break;
   case 0xA:
     /** MOV.B Rs, @aa:24 */
@@ -2325,7 +2325,7 @@ H8_OP(op6b)
   {
   case 0x0:
     /** MOV.W @aa:16, Rd */
-    ms_rd_w(system, system->dbus.bits.u, rd_w(system, func.l.l), movw);
+    ms_rd_w(system, system->dbus.bits.u, rd_w(system, func.l.l), mov_w);
     break;
   case 0x2:
     /** MOV.W @aa:24, Rd */
@@ -2333,7 +2333,7 @@ H8_OP(op6b)
     break;
   case 0x8:
     /** MOV.W Rs, @aa:16 */
-    rs_md_w(system, *rd_w(system, func.l.l), system->dbus.bits.u, movw);
+    rs_md_w(system, *rd_w(system, func.l.l), system->dbus.bits.u, mov_w);
     break;
   case 0xA:
     /** MOV.W Rs, @aa:24 */
@@ -2348,20 +2348,20 @@ H8_OP(op6c)
 {
   if (system->dbus.bh & B1000)
     /** MOV.B Rs, @-ERd */
-    rs_md_b(system, *rd_b(system, system->dbus.bl), erpd_b(system, system->dbus.bh), movb);
+    rs_md_b(system, *rd_b(system, system->dbus.bl), erpd_b(system, system->dbus.bh), mov_b);
   else
     /** MOV.B @ERs+, Rd */
-    ms_rd_b(system, erpi_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), movb);
+    ms_rd_b(system, erpi_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), mov_b);
 }
 
 H8_OP(op6d)
 {
   if (system->dbus.bh & B1000)
     /** MOV.W Rs, @-ERd */
-    rs_md_w(system, *rd_w(system, system->dbus.bl), erpd_w(system, system->dbus.bh), movw);
+    rs_md_w(system, *rd_w(system, system->dbus.bl), erpd_w(system, system->dbus.bh), mov_w);
   else
     /** MOV.W @ERs+, Rd */
-    ms_rd_w(system, erpi_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), movw);
+    ms_rd_w(system, erpi_w(system, system->dbus.bh), rd_w(system, system->dbus.bl), mov_w);
 }
 
 H8_OP(op6e)
@@ -2371,10 +2371,10 @@ H8_OP(op6e)
   h8_fetch(system);
   if (func.bh & B1000)
     /** MOV.B Rs, @(d:16, ERd) */
-    rs_md_b(system, *rd_b(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), movb);
+    rs_md_b(system, *rd_b(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), mov_b);
   else
     /** MOV.B @(d:16, ERs), Rd */
-    ms_rd_b(system, erd16(system, func.bh, system->dbus.bits.u), rd_b(system, func.bl), movb);
+    ms_rd_b(system, erd16(system, func.bh, system->dbus.bits.u), rd_b(system, func.bl), mov_b);
 }
 
 H8_OP(op6f)
@@ -2383,7 +2383,7 @@ H8_OP(op6f)
   h8_instruction_t func = system->dbus;
 
   h8_fetch(system);
-  ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.i), rd_w(system, func.bl), movw);
+  ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.i), rd_w(system, func.bl), mov_w);
 }
 
 H8_OP(op70)
@@ -2429,31 +2429,31 @@ H8_OP(op79)
   {
   case 0:
     /** MOV.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), movw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), mov_w);
     break;
   case 1:
     /** ADD.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), addw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), add_w);
     break;
   case 2:
     /** CMP.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), cmpw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), cmp_w);
     break;
   case 3:
     /** SUB.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), subw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), sub_w);
     break;
   case 4:
     /** OR.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), orw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), or_w);
     break;
   case 5:
     /** XOR.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), xorw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), xor_w);
     break;
   case 6:
     /** AND.W #xx:16, Rd */
-    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), andw);
+    rs_rd_w(system, system->dbus.bits, rd_w(system, curr.bl), and_w);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2469,31 +2469,31 @@ H8_OP(op7a)
   {
   case 0:
     /** MOV.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), movl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), mov_l);
     break;
   case 1:
     /** ADD.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), addl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), add_l);
     break;
   case 2:
     /** CMP.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), cmpl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), cmp_l);
     break;
   case 3:
     /** SUB.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), subl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), sub_l);
     break;
   case 4:
     /** OR.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), orl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), or_l);
     break;
   case 5:
     /** XOR.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), xorl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), xor_l);
     break;
   case 6:
     /** AND.L #xx:32, ERd */
-    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), andl);
+    rs_rd_l(system, imm, rd_l(system, system->dbus.bl), and_l);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2658,7 +2658,7 @@ H8_OP(op7f)
 void op8##al(h8_system_t *system) \
 { \
   /** ADD.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, addb); \
+  rs_rd_b(system, system->dbus.b, &reg, add_b); \
 }
 H8_UNROLL(OP8X)
 
@@ -2674,7 +2674,7 @@ H8_UNROLL(OP9X)
 void opa##al(h8_system_t *system) \
 { \
   /** CMP.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, cmpb); \
+  rs_rd_b(system, system->dbus.b, &reg, cmp_b); \
 }
 H8_UNROLL(OPAX)
 
@@ -2690,7 +2690,7 @@ H8_UNROLL(OPBX)
 void opc##al(h8_system_t *system) \
 { \
   /** OR.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, orb); \
+  rs_rd_b(system, system->dbus.b, &reg, or_b); \
 }
 H8_UNROLL(OPCX)
 
@@ -2698,7 +2698,7 @@ H8_UNROLL(OPCX)
 void opd##al(h8_system_t *system) \
 { \
   /** XOR.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, xorb); \
+  rs_rd_b(system, system->dbus.b, &reg, xor_b); \
 }
 H8_UNROLL(OPDX)
 
@@ -2706,7 +2706,7 @@ H8_UNROLL(OPDX)
 void ope##al(h8_system_t *system) \
 { \
   /** AND.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, andb); \
+  rs_rd_b(system, system->dbus.b, &reg, and_b); \
 }
 H8_UNROLL(OPEX)
 
@@ -2714,7 +2714,7 @@ H8_UNROLL(OPEX)
 void opf##al(h8_system_t *system) \
 { \
   /** MOV.B #xx:8, Rd */ \
-  rs_rd_b(system, system->dbus.b, &reg, movb); \
+  rs_rd_b(system, system->dbus.b, &reg, mov_b); \
 }
 H8_UNROLL(OPFX)
 
@@ -2833,7 +2833,7 @@ void h8_test_add(void)
   /* 10 + 5 = 15 */
   dst_byte.u = 10;
   src_byte.u = 5;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
@@ -2844,7 +2844,7 @@ void h8_test_add(void)
   /* 255 + 1 = 0 */
   dst_byte.u = 255;
   src_byte.u = 1;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 1 ||
       system.cpu.ccr.flags.z != 1 ||
       system.cpu.ccr.flags.v != 0 ||
@@ -2855,7 +2855,7 @@ void h8_test_add(void)
   /* 127 + 1 = 128 */
   dst_byte.u = 127;
   src_byte.u = 1;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 1 ||
@@ -2866,7 +2866,7 @@ void h8_test_add(void)
   /* -128 + (-1) = 127 */
   dst_byte.i = -128;
   src_byte.i = -1;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 1 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 1 ||
@@ -2877,7 +2877,7 @@ void h8_test_add(void)
   /* 0 + 0 = 0 */
   dst_byte.u = 0;
   src_byte.u = 0;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.h != 0 ||
       system.cpu.ccr.flags.z != 1 ||
@@ -2889,7 +2889,7 @@ void h8_test_add(void)
   /* 127 + 127 = 254 */
   dst_byte.u = 127;
   src_byte.u = 127;
-  result = addb(&system, dst_byte, src_byte);
+  result = add_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 1 ||
@@ -3123,7 +3123,7 @@ void h8_test_sub(void)
   /* 15 - 5 = 10 */
   dst_byte.u = 15;
   src_byte.u = 5;
-  result = subb(&system, dst_byte, src_byte);
+  result = sub_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
@@ -3134,7 +3134,7 @@ void h8_test_sub(void)
   /* 10 - 10 = 0 */
   dst_byte.u = 10;
   src_byte.u = 10;
-  result = subb(&system, dst_byte, src_byte);
+  result = sub_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 1 ||
       system.cpu.ccr.flags.v != 0 ||
@@ -3145,7 +3145,7 @@ void h8_test_sub(void)
   /* 1 - 2 = -1 (255) -- Underflow */
   dst_byte.u = 1;
   src_byte.u = 2;
-  result = subb(&system, dst_byte, src_byte);
+  result = sub_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 1 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
@@ -3156,7 +3156,7 @@ void h8_test_sub(void)
   /* 128 - 1 = 127 */
   dst_byte.u = 128;
   src_byte.u = 1;
-  result = subb(&system, dst_byte, src_byte);
+  result = sub_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 0 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 1 ||
@@ -3167,7 +3167,7 @@ void h8_test_sub(void)
   /* 0 - 1 = -1 (255) */
   dst_byte.u = 0;
   src_byte.u = 1;
-  result = subb(&system, dst_byte, src_byte);
+  result = sub_b(&system, dst_byte, src_byte);
   if (system.cpu.ccr.flags.c != 1 ||
       system.cpu.ccr.flags.z != 0 ||
       system.cpu.ccr.flags.v != 0 ||
