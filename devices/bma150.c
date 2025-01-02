@@ -20,11 +20,7 @@ typedef struct
     h8_byte_t raw;
   } state;
 
-  /* ROM tries to read immediately after sending control byte, when it should
-   * send a don't care data byte first. This flag is a hack to keep track.
-   * Not sure if this is correct behavior, but it seems like it should only
-   * read bytes 0 and 1 on boot, while without this check also reads 2 */
-  h8_bool read_next;
+  h8_u8 count;
 
   h8_bool selected;
 } h8_bma150_t;
@@ -37,6 +33,8 @@ void h8_bma150_select_out(h8_device_t *device, h8_bool on)
   h8_bma150_t *bma = device->device;
 
   bma->selected = !on;
+  if (!bma->selected)
+    bma->count = 0;
 }
 
 /** 4.1.1 Four-wire SPI interface - Figure 7 */
@@ -46,10 +44,11 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
 
   if (!bma->selected)
     return;
-  else if (bma->read_next)
-    bma->read_next = FALSE;
-  else if (bma->state.parts.mode == H8_BMA150_READING)
-    *dst = bma->data[bma->state.parts.addr];
+  else if (bma->state.parts.mode == H8_BMA150_READING && bma->count > 1)
+    *dst = bma->data[bma->state.parts.addr + (bma->count - 2)];
+
+  if (dst->u == 0x0D)
+    printf("d");
 }
 
 /** 4.1.1 Four-wire SPI interface - Figure 6 */
@@ -57,31 +56,29 @@ void h8_bma150_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
 {
   h8_bma150_t *bma = device->device;
 
+  /* Not selected. Ignore SSU command. */
   if (!bma->selected)
     return;
 
-  bma->read_next = FALSE;
+  /* RW pulled down. This is a new command. */
+  if (bma->state.parts.mode == H8_BMA150_READING && !(value.u & B10000000))
+    bma->count = 0;
 
-  if (bma->state.parts.mode == H8_BMA150_WRITING && bma->state.parts.addr)
-  {
-    if (bma->state.parts.addr > 0x0A)
-      bma->data[bma->state.parts.addr] = value;
-    else
-      printf("ERROR: BMA150 write to read-only address 0x%02X\n",
-             bma->state.parts.addr);
-    bma->state.parts.addr = 0;
-  }
-  else if (bma->state.parts.mode == H8_BMA150_READING)
-    bma->state.parts.addr++;
+  if (bma->count == 0)
+    bma->state.raw = value;
   else
   {
-    bma->state.raw = value;
-    if (bma->state.parts.mode == H8_BMA150_READING)
+    if (bma->state.parts.mode == H8_BMA150_WRITING)
     {
-      bma->state.parts.addr--;
-      bma->read_next = TRUE;
+      if (bma->state.parts.addr >= 0x0A)
+        bma->data[bma->state.parts.addr] = value;
+      else
+        printf("ERROR: BMA150 write to read-only address 0x%02X\n",
+               bma->state.parts.addr);
+      bma->count = 0;
     }
   }
+  bma->count++;
 
   *dst = value;
 }
@@ -123,5 +120,7 @@ void h8_bma150_init(h8_device_t *device)
     bma->data[0x33].u = 13;
     bma->data[0x34].u = B00001110;
     bma->data[0x35].u = B10000000;
+
+    bma->count = 0;
   }
 }
