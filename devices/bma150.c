@@ -46,9 +46,6 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
     return;
   else if (bma->state.parts.mode == H8_BMA150_READING && bma->count > 1)
     *dst = bma->data[bma->state.parts.addr + (bma->count - 2)];
-
-  if (dst->u == 0x0D)
-    printf("d");
 }
 
 /** 4.1.1 Four-wire SPI interface - Figure 6 */
