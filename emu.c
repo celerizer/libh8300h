@@ -2389,19 +2389,28 @@ H8_OP(op6f)
 H8_OP(op70)
 {
   /** BSET #xx:3, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), bset);
+  h8_byte_t immediate;
+
+  immediate.u = system->dbus.bh;
+  rs_rd_b(system, immediate, rd_b(system, system->dbus.bl), bset);
 }
 
 H8_OP(op71)
 {
   /** BNOT #xx:3, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), bnot);
+  h8_byte_t immediate;
+
+  immediate.u = system->dbus.bh;
+  rs_rd_b(system, immediate, rd_b(system, system->dbus.bl), bnot);
 }
 
 H8_OP(op72)
 {
   /** BCLR #xx:3, Rd */
-  rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), bclr);
+  h8_byte_t immediate;
+
+  immediate.u = system->dbus.bh;
+  rs_rd_b(system, immediate, rd_b(system, system->dbus.bl), bclr);
 }
 
 H8_OP(op73)
