@@ -47,6 +47,9 @@ typedef enum
   /* A controller to setup IrDA */
   H8_DEVICE_IRDA_CONTROL,
 
+  /* An analog accelerometer to be used with the A/DC */
+  H8_DEVICE_ACCELEROMETER,
+
   H8_DEVICE_SIZE
 } h8_device_id;
 
@@ -83,16 +86,33 @@ typedef enum
 
 struct h8_device_t;
 
+/**
+ * The function used to initialize and allocate data for a device on the system
+ */
 typedef void H8D_OP_INIT_T(struct h8_device_t*);
+
+/**
+ * The function used to deinitialize and free data for a device on the system
+ */
 typedef void H8D_OP_FREE_T(struct h8_device_t*);
 
+/**
+ * The function used to save the state of a device on the system.
+ * If NULL, this device does not support savestates.
+ */
 typedef h8_bool H8D_OP_SAVE_T(const struct h8_device_t*, h8_u8**, unsigned*);
+
+/**
+ * The function used to load the state of a device on the system.
+ * If NULL, this device does not support savestates.
+ */
 typedef h8_bool H8D_OP_LOAD_T(struct h8_device_t*, const h8_u8**, unsigned*);
 
 typedef h8_bool H8D_OP_PDR_IN_T(struct h8_device_t*);
 typedef void H8D_OP_PDR_OUT_T(struct h8_device_t*, const h8_bool);
 typedef void H8D_OP_SSU_IN_T(struct h8_device_t*, h8_byte_t*);
 typedef void H8D_OP_SSU_OUT_T(struct h8_device_t*, h8_byte_t*, h8_byte_t);
+typedef h8_word_t H8D_OP_ADC_IN_T(struct h8_device_t*);
 
 typedef struct h8_device_t
 {
@@ -124,6 +144,8 @@ typedef struct h8_device_t
    */
   H8D_OP_SSU_OUT_T *ssu_out;
 
+  H8D_OP_ADC_IN_T *adc_in;
+
   /**
    * PDR1: 3 pins - 0, 1, 2
    * PDR3: 3 pins - 0, 1, 2
@@ -153,7 +175,16 @@ typedef struct h8_device_t
 /** An arbitrary maximum for how many port associations can be created */
 #define H8_HOOKUP_MAX 32
 
-typedef struct h8_software_hookup_t
+typedef struct h8_adc_hookup_t
+{
+  /* An identifier specifying which of the implemented devices this is */
+  h8_device_id type;
+
+  /* The A/DC channel this hookup uses */
+  unsigned channel;
+} h8_adc_hookup_t;
+
+typedef struct h8_pdr_hookup_t
 {
   /* An identifier specifying which of the implemented devices this is */
   h8_device_id type;
@@ -164,14 +195,15 @@ typedef struct h8_software_hookup_t
   H8D_OP_PDR_IN_T *pdr_ins[6];
 
   H8D_OP_PDR_OUT_T *pdr_outs[6];
-} software_hookup_t;
+} h8_pdr_hookup_t;
 
 typedef struct h8_system_preset_t
 {
   const char *title;
   h8_system_id system;
   unsigned crc32[H8_CRC32_MAX];
-  software_hookup_t hookups[H8_HOOKUP_MAX];
+  h8_adc_hookup_t adc_hookups[16];
+  h8_pdr_hookup_t pdr_hookups[H8_HOOKUP_MAX];
 } h8_system_preset_t;
 
 #endif

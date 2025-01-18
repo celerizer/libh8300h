@@ -1,4 +1,5 @@
 #include "device.h"
+#include "devices/accelerometer.h"
 #include "devices/bma150.h"
 #include "devices/buttons.h"
 #include "devices/eeprom.h"
@@ -9,7 +10,8 @@
 #include "system.h"
 #include "types.h"
 
-#define DEVICES_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, { NULL }, { NULL }
+#define ADC_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID
+#define PDR_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
 {
@@ -17,6 +19,10 @@ static const h8_system_preset_t h8_systems[] =
     "NTR-027",
     H8_SYSTEM_NTR_027,
     { 0x82341b9f, 0 },
+    {
+      { H8_DEVICE_ACCELEROMETER, 0 },
+      { ADC_END }
+    },
     {
       {
         H8_DEVICE_FACTORY_CONTROL,
@@ -46,7 +52,7 @@ static const h8_system_preset_t h8_systems[] =
         { NULL }
       },
 
-      { DEVICES_END }
+      { PDR_END }
     }
   },
 
@@ -54,6 +60,9 @@ static const h8_system_preset_t h8_systems[] =
     "NTR-031",
     H8_SYSTEM_NTR_031,
     { 0x64b40d8d /* earlier */, 0x9321792f /* later */, 0 },
+    {
+      { ADC_END }
+    },
     {
       {
         H8_DEVICE_SPI_BUS,
@@ -75,7 +84,7 @@ static const h8_system_preset_t h8_systems[] =
        * port 8, bits 2/3, which is unused and conflicts with SPI chip select.
        */
 
-      { DEVICES_END }
+      { PDR_END }
     }
   },
 
@@ -83,6 +92,9 @@ static const h8_system_preset_t h8_systems[] =
     "NTR-032",
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
+    {
+      { ADC_END }
+    },
     {
       {
         H8_DEVICE_LCD,
@@ -112,10 +124,10 @@ static const h8_system_preset_t h8_systems[] =
         { NULL }
       },
 
-      { DEVICES_END }
+      { PDR_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, { { DEVICES_END } } }
+  { NULL, H8_SYSTEM_INVALID, { 0 }, { { ADC_END } }, { { PDR_END } } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -132,6 +144,9 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
       break;
     case H8_DEVICE_3BUTTON:
       device->init = h8_buttons_init_3b;
+      break;
+    case H8_DEVICE_ACCELEROMETER:
+      device->init = h8_accelerometer_init;
       break;
     case H8_DEVICE_BMA150:
       device->init = h8_bma150_init;
@@ -192,10 +207,10 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
 
     for (i = 0; i < H8_HOOKUP_MAX; i++)
     {
-      const software_hookup_t *hookup = &preset->hookups[i];
+      const h8_pdr_hookup_t *hookup = &preset->pdr_hookups[i];
       h8_device_t *device = &system->devices[j];
 
-      if (preset->hookups[i].type == H8_DEVICE_INVALID)
+      if (preset->pdr_hookups[i].type == H8_DEVICE_INVALID)
         break;
       else
       {
