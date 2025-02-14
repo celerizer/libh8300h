@@ -1,5 +1,6 @@
 #include "device.h"
 #include "devices/accelerometer.h"
+#include "devices/battery.h"
 #include "devices/bma150.h"
 #include "devices/buttons.h"
 #include "devices/eeprom.h"
@@ -10,7 +11,7 @@
 #include "system.h"
 #include "types.h"
 
-#define ADC_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID
+#define ADC_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, NULL
 #define PDR_END H8_DEVICE_INVALID, H8_HOOKUP_PORT_INVALID, { NULL }, { NULL }
 
 static const h8_system_preset_t h8_systems[] =
@@ -20,7 +21,9 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_027,
     { 0x82341b9f, 0 },
     {
-      { H8_DEVICE_ACCELEROMETER, 0 },
+      { H8_DEVICE_ACCELEROMETER, 0, h8_accelerometer_adrr_x },
+      { H8_DEVICE_ACCELEROMETER, 1, h8_accelerometer_adrr_y },
+      { H8_DEVICE_BATTERY, 2, h8_battery_adrr },
       { ADC_END }
     },
     {
@@ -93,6 +96,8 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
+      /** @todo Which AD/C channel is this on in NTR-032? */
+      { H8_DEVICE_BATTERY, 0, h8_battery_adrr },
       { ADC_END }
     },
     {
@@ -147,6 +152,9 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
       break;
     case H8_DEVICE_ACCELEROMETER:
       device->init = h8_accelerometer_init;
+      break;
+    case H8_DEVICE_BATTERY:
+      device->init = h8_battery_init;
       break;
     case H8_DEVICE_BMA150:
       device->init = h8_bma150_init;
@@ -205,12 +213,35 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
       return FALSE;
     }
 
+    /* Setup devices attached to the A/DC */
+    for (i = 0; i < H8_HOOKUP_MAX; i++)
+    {
+      const h8_adc_hookup_t *hookup = &preset->adc_hookups[i];
+      h8_device_t *device = &system->devices[j];
+
+      if (hookup->type == H8_DEVICE_INVALID)
+        break;
+      else
+      {
+        /* Create the device if it does not already exist */
+        if (device->type == H8_DEVICE_INVALID)
+        {
+          h8_device_init(device, hookup->type);
+          j++;
+        }
+
+        system->adc[hookup->channel].device = device;
+        system->adc[hookup->channel].func = hookup->func;
+      }
+    }
+
+    /* Setup devices attached to the IO ports and SSU */
     for (i = 0; i < H8_HOOKUP_MAX; i++)
     {
       const h8_pdr_hookup_t *hookup = &preset->pdr_hookups[i];
       h8_device_t *device = &system->devices[j];
 
-      if (preset->pdr_hookups[i].type == H8_DEVICE_INVALID)
+      if (hookup->type == H8_DEVICE_INVALID)
         break;
       else
       {

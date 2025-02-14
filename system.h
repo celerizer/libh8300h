@@ -260,6 +260,12 @@ typedef struct
   h8_device_t *device;
 } h8_system_pin_out_t;
 
+typedef struct
+{
+  H8D_OP_ADRR_T *func;
+  h8_device_t *device;
+} h8_system_adc_t;
+
 typedef struct h8_system_t
 {
   h8_cpu_t cpu;
@@ -292,6 +298,8 @@ typedef struct h8_system_t
 
   h8_system_pin_in_t pdrb_in[6];
   h8_system_pin_out_t pdrb_out[6];
+
+  h8_system_adc_t adc[6];
 
   /** Whether or not SLEEP mode is currently active */
   h8_bool sleep;

@@ -469,16 +469,46 @@ H8_IN(adsri)
   *byte = system->vmem.parts.io2.adc.adsr.raw;
 }
 
+/** @todo This currently reads twice when accessing ADRR as a word; fix that */
+static void h8_adc_read(h8_system_t *system)
+{
+  unsigned channel = system->vmem.parts.io2.adc.amr.flags.ch;
+
+  if (channel < H8_ADC_AN0 || channel >= H8_ADC_MAX)
+    return;
+  else
+  {
+    h8_system_adc_t *adc = &system->adc[channel - H8_ADC_AN0];
+    h8_word_t result;
+
+    if (adc->device && adc->func)
+      result = adc->func(adc->device);
+
+    system->vmem.parts.io2.adc.adrr.raw.h = result.h;
+    system->vmem.parts.io2.adc.adrr.raw.l = result.l;
+  }
+}
+
 H8_IN(adrrhi)
 {
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xFF;
+  h8_adc_read(system);
   *byte = system->vmem.parts.io2.adc.adrr.raw.h;
+}
+
+H8_OUT(adrrho)
+{
+  H8_IO_DUMMY_OUT
 }
 
 H8_IN(adrrli)
 {
-  system->vmem.parts.io2.adc.adrr.raw.l.u = 0xC0;
+  h8_adc_read(system);
   *byte = system->vmem.parts.io2.adc.adrr.raw.l;
+}
+
+H8_OUT(adrrlo)
+{
+  H8_IO_DUMMY_OUT
 }
 
 static H8_IN_T reg_ins[0x160] =
@@ -612,7 +642,7 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, adrrho, adrrlo, NULL, NULL,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

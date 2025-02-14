@@ -47,8 +47,11 @@ typedef enum
   /* A controller to setup IrDA */
   H8_DEVICE_IRDA_CONTROL,
 
-  /* An analog accelerometer to be used with the A/DC */
+  /* A 2-axis analog accelerometer */
   H8_DEVICE_ACCELEROMETER,
+
+  /* A generic device that represents battery level */
+  H8_DEVICE_BATTERY,
 
   H8_DEVICE_SIZE
 } h8_device_id;
@@ -112,7 +115,7 @@ typedef h8_bool H8D_OP_PDR_IN_T(struct h8_device_t*);
 typedef void H8D_OP_PDR_OUT_T(struct h8_device_t*, const h8_bool);
 typedef void H8D_OP_SSU_IN_T(struct h8_device_t*, h8_byte_t*);
 typedef void H8D_OP_SSU_OUT_T(struct h8_device_t*, h8_byte_t*, h8_byte_t);
-typedef h8_word_t H8D_OP_ADC_IN_T(struct h8_device_t*);
+typedef h8_word_t H8D_OP_ADRR_T(struct h8_device_t*);
 
 typedef struct h8_device_t
 {
@@ -143,8 +146,6 @@ typedef struct h8_device_t
    * and each implementation should handle its own chip select.
    */
   H8D_OP_SSU_OUT_T *ssu_out;
-
-  H8D_OP_ADC_IN_T *adc_in;
 
   /**
    * PDR1: 3 pins - 0, 1, 2
@@ -182,6 +183,8 @@ typedef struct h8_adc_hookup_t
 
   /* The A/DC channel this hookup uses */
   unsigned channel;
+
+  H8D_OP_ADRR_T *func;
 } h8_adc_hookup_t;
 
 typedef struct h8_pdr_hookup_t
@@ -202,7 +205,7 @@ typedef struct h8_system_preset_t
   const char *title;
   h8_system_id system;
   unsigned crc32[H8_CRC32_MAX];
-  h8_adc_hookup_t adc_hookups[16];
+  h8_adc_hookup_t adc_hookups[6];
   h8_pdr_hookup_t pdr_hookups[H8_HOOKUP_MAX];
 } h8_system_preset_t;
 
