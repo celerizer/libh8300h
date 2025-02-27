@@ -45,7 +45,13 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
   if (!bma->selected)
     return;
   else if (bma->state.parts.mode == H8_BMA150_READING && bma->count > 1)
-    *dst = bma->data[bma->state.parts.addr + (bma->count - 2)];
+  {
+    unsigned address = bma->state.parts.addr + bma->count - 2;
+
+    *dst = bma->data[address];
+    printf("[BMA150] read 0x%02X -> %02X\n",
+           address, dst->u);
+  }
 }
 
 /** 4.1.1 Four-wire SPI interface - Figure 6 */
@@ -68,9 +74,13 @@ void h8_bma150_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     if (bma->state.parts.mode == H8_BMA150_WRITING)
     {
       if (bma->state.parts.addr >= 0x0A)
+      {
+        printf("[BMA150] write 0x%02X -> %02X\n",
+               bma->state.parts.addr, value.u);
         bma->data[bma->state.parts.addr] = value;
+      }
       else
-        printf("ERROR: BMA150 write to read-only address 0x%02X\n",
+        printf("[BMA150] ERROR attempted write to read-only address %02X \n",
                bma->state.parts.addr);
       bma->count = 0;
     }
