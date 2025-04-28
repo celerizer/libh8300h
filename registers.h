@@ -213,6 +213,18 @@ typedef union h8_adrr_t
   h8_word_be_t raw;
 } h8_adrr_t;
 
+typedef enum
+{
+  H8_ADC_AN0 = B0100,
+  H8_ADC_AN1,
+  H8_ADC_AN2,
+  H8_ADC_AN3,
+  H8_ADC_AN4,
+  H8_ADC_AN5,
+
+  H8_ADC_MAX
+} h8_adc_channel;
+
 /**
  * 7.3.2 A/D Mode Register (AMR)
  * Mapped to FFBE
