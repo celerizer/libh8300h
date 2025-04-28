@@ -13,6 +13,7 @@ H8_SOURCES := \
   $(H8_ROOT_DIR)/devices/led.c \
   $(H8_ROOT_DIR)/dma.c \
   $(H8_ROOT_DIR)/emu.c \
+  $(H8_ROOT_DIR)/logger.c \
   $(H8_ROOT_DIR)/rtc.c
 
 H8_HEADERS := \
@@ -28,6 +29,7 @@ H8_HEADERS := \
   $(H8_ROOT_DIR)/devices/lcd.h \
   $(H8_ROOT_DIR)/devices/led.h \
   $(H8_ROOT_DIR)/dma.h \
+  $(H8_ROOT_DIR)/logger.h \
   $(H8_ROOT_DIR)/registers.h \
   $(H8_ROOT_DIR)/rtc.h \
   $(H8_ROOT_DIR)/system.h \
