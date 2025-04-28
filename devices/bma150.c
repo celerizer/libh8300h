@@ -1,7 +1,7 @@
-#include "../dma.h"
 #include "bma150.h"
 
-#include <stdio.h>
+#include "../dma.h"
+#include "../logger.h"
 
 static const char *name = "Bosch BMA150 Triaxial digital acceleration sensor";
 static const h8_device_id type = H8_DEVICE_BMA150;
@@ -49,7 +49,7 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
     unsigned address = bma->state.parts.addr + bma->count - 2;
 
     *dst = bma->data[address];
-    printf("[BMA150] read 0x%02X -> %02X\n",
+    h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 read 0x%02X -> %02X",
            address, dst->u);
   }
 }
@@ -75,12 +75,13 @@ void h8_bma150_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     {
       if (bma->state.parts.addr >= 0x0A)
       {
-        printf("[BMA150] write 0x%02X -> %02X\n",
+        h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 write 0x%02X -> %02X",
                bma->state.parts.addr, value.u);
         bma->data[bma->state.parts.addr] = value;
       }
       else
-        printf("[BMA150] ERROR attempted write to read-only address %02X \n",
+        h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 ERROR attempted write to "
+                                        "read-only address %02X",
                bma->state.parts.addr);
       bma->count = 0;
     }

@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <string.h>
-
+#include "logger.h"
 #include "system.h"
+
+#include <string.h>
 
 #define H8_DEBUG_PRINT_FETCH 0
 #define H8_DEBUG_PRINT_REGISTERS 0
@@ -491,7 +491,8 @@ static void h8_adc_read(h8_system_t *system)
 
 H8_IN(adrrhi)
 {
-  h8_adc_read(system);
+  /*h8_adc_read(system);*/
+  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xFF;
   *byte = system->vmem.parts.io2.adc.adrr.raw.h;
 }
 
@@ -502,7 +503,8 @@ H8_OUT(adrrho)
 
 H8_IN(adrrli)
 {
-  h8_adc_read(system);
+  /*h8_adc_read(system);*/
+  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xc0;
   *byte = system->vmem.parts.io2.adc.adrr.raw.l;
 }
 
@@ -703,7 +705,7 @@ static H8_IN_T h8_register_in(h8_system_t *system, unsigned address)
   {
 #if H8_DEBUG_PRINT_REGISTERS
     if (!reg_ins[address - H8_MEMORY_REGION_IO1])
-      printf("Better not implement %04X input, BOY\n", address);
+      h8_log(H8_LOG_WARN, H8_LOG_CPU, "%04X input not implemented.", address);
 #endif
     return reg_ins[address - H8_MEMORY_REGION_IO1];
   }
@@ -712,7 +714,7 @@ static H8_IN_T h8_register_in(h8_system_t *system, unsigned address)
   {
 #if H8_DEBUG_PRINT_REGISTERS
     if (!reg_ins[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)])
-      printf("Better not implement %04X input, BOY\n", address);
+      h8_log(H8_LOG_WARN, H8_LOG_CPU, "%04X input not implemented.", address);
 #endif
     return reg_ins[address - H8_MEMORY_REGION_IO2 + sizeof(system->vmem.parts.io1)];
   }
@@ -756,7 +758,6 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
   h8_byte_t *byte = h8_find(system, address);
 
   system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
-  system->vmem.raw[0xF7C4].u = 1;
 
   if (in)
     in(system, byte);
@@ -2841,14 +2842,14 @@ void h8_step(h8_system_t *system)
     function(system);
   else
   {
-    printf("UNDEFINED OPCODE!!! ");
-    printf("%02X%02X at %04X\n", system->dbus.a.u, system->dbus.b.u, system->cpu.pc - 2);
-    /* pootis breakpoint here */
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Undefined opcode - %02X%02X at %04X",
+           system->dbus.a.u, system->dbus.b.u, system->cpu.pc - 2);
     H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
   }
 
   if (system->error_code)
-    printf("SYSTEM ERROR!!! %u at %u", system->error_code, system->error_line);
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "CRITICAL EMULATION ERROR %u at %u",
+           system->error_code, system->error_line);
 
   system->instructions++;
 }
@@ -2857,6 +2858,7 @@ void h8_run(h8_system_t *system);
 
 #if H8_TESTS
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #define H8_TEST_FAIL(a) { printf("Test failed in %s on line %u.\n", \

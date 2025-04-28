@@ -1,7 +1,7 @@
 #include "../dma.h"
+#include "../logger.h"
 #include "eeprom.h"
 
-#include <stdio.h>
 #include <string.h>
 
 static const char *name_8k = "8KB EEPROM device";
@@ -149,10 +149,9 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
     if (eeprom->position > 3)
     {
       *dst = eeprom->data[eeprom->address.u];
-      printf("[EEPROM] read 0x%04X -> %02X", eeprom->address.u, dst->u);
-      if (dst->u >= 0x20 && dst->u <= 0x7E)
-        printf(" '%c'", dst->i);
-      printf("\n");
+      h8_log(H8_LOG_INFO, H8_LOG_EEP, "read 0x%04X -> %02X %c",
+             eeprom->address.u, dst->u,
+             (dst->u >= 0x20 && dst->u <= 0x7E) ? dst->i : '\0');
       return;
     }
     break;
@@ -164,7 +163,7 @@ void h8_eeprom_read(h8_device_t *device, h8_byte_t *dst)
   dst->u = 0;
 }
 
-void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
+void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
 {
   h8_eeprom_t *eeprom = (h8_eeprom_t*)device->device;
 
@@ -217,10 +216,9 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       if (eeprom->status.flags.wel)
       {
         eeprom->data[eeprom->address.u] = value;
-        printf("[EEPROM] write 0x%04X -> %02X", eeprom->address.u, value.u);
-        if (value.u >= 0x20 && value.u <= 0x7E)
-          printf(" '%c'", value.i);
-        printf("\n");
+        h8_log(H8_LOG_INFO, H8_LOG_EEP, "write 0x%04X -> %02X %c",
+             eeprom->address.u, dst->u,
+             (dst->u >= 0x20 && dst->u <= 0x7E) ? dst->i : '\0');
       }
       eeprom->address.u++;
       goto end;

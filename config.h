@@ -9,6 +9,13 @@
 #define H8_BIG_ENDIAN 0
 #endif
 
+#ifndef H8_LOGGER_DEFAULT_LEVEL
+/**
+ * The default severity level the logger will process
+ */
+#define H8_LOGGER_DEFAULT_LEVEL 1
+#endif
+
 #ifndef H8_NO_DMA
 #define H8_NO_DMA 0
 #endif
