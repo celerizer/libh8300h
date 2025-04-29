@@ -1,76 +1,10 @@
-#include "../dma.h"
 #include "lcd.h"
-#include "../types.h"
+
+#include "../dma.h"
+#include "../logger.h"
 
 static const char *name = "128x64 LCD device";
 static const h8_device_id type = H8_DEVICE_LCD;
-
-typedef union
-{
-  H8_BITFIELD_4
-  (
-    /** Hardcoded chip ID */
-    h8_u8 id : 5,
-
-    /** Whether the device is busy with a reset. Unimplemented */
-    h8_u8 res : 1,
-
-    /** Whether the device is on */
-    h8_u8 on : 1,
-
-    /** Whether the device is busy with a command. Unimplemented */
-    h8_u8 bsy : 1
-  ) flags;
-  h8_u8 raw;
-} h8_lcd_sr_t;
-
-#define H8_LCD_PALETTE_WHITE 0
-#define H8_LCD_PALETTE_LIGHT_GRAY 1
-#define H8_LCD_PALETTE_DARK_GRAY 2
-#define H8_LCD_PALETTE_BLACK 3
-#define H8_LCD_PALETTE_SIZE 4
-
-typedef struct
-{
-  /** Max X by max Y */
-  h8_u8 vram[128 * 16 * 2];
-
-  h8_bool selected;
-  h8_bool data_mode;
-  h8_u8 command;
-
-  h8_bool second_write_cmd, second_write_data, second_read;
-
-  h8_u8 x, y;
-
-  /** @todo What is this? */
-  h8_bool icon_enable;
-
-  /** If true, displays all pixels on regardless of VRAM contents */
-  h8_bool all_on;
-
-  /** If true, flips the poles of white and black */
-  h8_bool inverse_display;
-
-  /** If true, enters the mode determined by power_save_mode_sleep */
-  h8_bool power_save;
-
-  /** If true, the display will sleep when power save is enabled.
-   *  If false, the display will standby. */
-  h8_bool power_save_mode_sleep;
-
-  h8_bool x_flip, y_flip;
-
-  h8_bool segment_remap, internal_oscillator, display_on;
-
-  /** Various unimplemented parameters */
-  h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion,
-        dcdc_factor, irr_ratio, lcd_bias, pwm_frc, power_control;
-
-  h8_u8 palette_modes[H8_LCD_PALETTE_SIZE];
-
-  h8_lcd_sr_t status;
-} h8_lcd_t;
 
 /**
  * VRAM layout as array of bytes looks summat like this:
@@ -384,6 +318,8 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0xFE:
       case 0xFF:
         /** Unknown/custom purpose extended command */
+        h8_log(H8_LOG_INFO, H8_LOG_LCD, "Custom command %02X -> %u (0x%02X)",
+               m_lcd->command, value.u, value.u);
         break;
       default:
         break;
