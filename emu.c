@@ -488,19 +488,9 @@ static void h8_adc_read(h8_system_t *system)
   }
 }
 
-H8_IN(adrrhi)
-{
-  *byte = system->vmem.parts.io2.adc.adrr.raw.h;
-}
-
 H8_OUT(adrrho)
 {
   H8_IO_DUMMY_OUT
-}
-
-H8_IN(adrrli)
-{
-  *byte = system->vmem.parts.io2.adc.adrr.raw.l;
 }
 
 H8_OUT(adrrlo)
@@ -510,18 +500,20 @@ H8_OUT(adrrlo)
 
 H8_OUT(amro)
 {
-  h8_amr_t *amr = byte;
+  h8_amr_t *amr = (h8_amr_t*)byte;
   h8_amr_t new_amr;
+  H8_UNUSED(system);
 
   new_amr.raw = value;
 
-  if (byte != &system->vmem.parts.io2.adc.amr)
-    return;
-
+  /* It seems like channel and other flags are set in separate commands */
   if (new_amr.flags.ch >= H8_ADC_AN0 && new_amr.flags.ch < H8_ADC_MAX)
     amr->flags.ch = new_amr.flags.ch;
   else
+  {
     amr->flags.cks = new_amr.flags.cks;
+    amr->flags.trge = new_amr.flags.trge;
+  }
 }
 
 H8_OUT(adsro)
@@ -597,7 +589,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, adrrhi, adrrli, NULL, adsri,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, adsri,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -715,16 +707,13 @@ unsigned h8_write(h8_system_t *system, const void *buffer,
     return 0;
 }
 
-h8_byte_t *h8_find(h8_system_t *system, unsigned address)
+void *h8_find(h8_system_t *system, unsigned address)
 {
 #if H8_PROFILING
   /*if (address >= 0xf780 && address < 0xff80)*/
     system->reads[address & 0xFFFF] += 1;
 #endif
-  if (address == 0xffbe)
-    return &system->vmem.raw[address];
-  else
-    return &system->vmem.raw[address & 0xFFFF];
+  return &system->vmem.raw[address & 0xFFFF];
 }
 
 static H8_IN_T h8_register_in(h8_system_t *system, unsigned address)
@@ -801,11 +790,7 @@ static void h8_byte_out(h8_system_t *system, const unsigned address,
   h8_byte_t *byte = h8_find(system, address);
 
   if (out)
-  {
-    if (byte != &system->vmem.raw[address])
-      h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Byte out wrong addr");
     out(system, byte, value);
-  }
   else
     *byte = value;
 }
@@ -3000,7 +2985,6 @@ int h8_test_bit_manip(void)
 void h8_test_bit_order(void)
 {
   h8_ccr_t ccr_test;
-  h8_amr_t amr_test;
 
   ccr_test.raw.u = 0;
   ccr_test.flags.c = 1;
@@ -3186,7 +3170,7 @@ void h8_test_size(void)
     H8_TEST_FAIL(2)
   if (sizeof(system.vmem) != 0x10000)
     H8_TEST_FAIL(3)
-  if (sizeof(system.vmem.parts.io2.adc) != 4)
+  if ((void*)&system.vmem.raw[0xffbe] != (void*)&system.vmem.parts.io2.adc.amr)
     H8_TEST_FAIL(4)
 
   printf("Size test passed!\n");
