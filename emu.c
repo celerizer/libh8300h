@@ -1081,17 +1081,17 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   *dst = result;
 }
 
-h8_word_t mulxu_b(h8_byte_t src, h8_byte_t dst)
+h8_word_t mulxu_b(h8_word_t dst, const h8_byte_t src)
 {
   h8_word_t result;
-  result.u = src.u * dst.u;
+  result.u = src.u * dst.l.u;
   return result;
 }
 
-h8_long_t mulxu_w(h8_word_t src, h8_word_t dst)
+h8_long_t mulxu_w(h8_long_t dst, const h8_word_t src)
 {
   h8_long_t result;
-  result.u = src.u * dst.u;
+  result.u = src.u * dst.l.u;
   return result;
 }
 
@@ -2058,7 +2058,7 @@ H8_OP(op4f)
 H8_OP(op50)
 {
   /** MULXU.B Rs, Rd */
-  *rd_w(system, system->dbus.bl) = mulxu_b(*rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
+  *rd_w(system, system->dbus.bl) = mulxu_b(*rd_w(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
 }
 
 H8_OP(op51)
@@ -2070,7 +2070,7 @@ H8_OP(op51)
 H8_OP(op52)
 {
   /** MULXU.W Rs, ERd */
-  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
+  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
 }
 
 H8_OP(op53)
