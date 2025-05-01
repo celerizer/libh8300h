@@ -97,7 +97,7 @@ static const h8_system_preset_t h8_systems[] =
     { 0xd4a05446, 0 },
     {
       /** @todo Which AD/C channel is this on in NTR-032? */
-      { H8_DEVICE_BATTERY, 0, h8_battery_adrr },
+      { H8_DEVICE_BATTERY, 3, h8_battery_adrr },
       { ADC_END }
     },
     {

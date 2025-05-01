@@ -469,7 +469,6 @@ H8_IN(adsri)
   *byte = system->vmem.parts.io2.adc.adsr.raw;
 }
 
-/** @todo This currently reads twice when accessing ADRR as a word; fix that */
 static void h8_adc_read(h8_system_t *system)
 {
   unsigned channel = system->vmem.parts.io2.adc.amr.flags.ch;
@@ -491,8 +490,6 @@ static void h8_adc_read(h8_system_t *system)
 
 H8_IN(adrrhi)
 {
-  /*h8_adc_read(system);*/
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xFF;
   *byte = system->vmem.parts.io2.adc.adrr.raw.h;
 }
 
@@ -503,14 +500,43 @@ H8_OUT(adrrho)
 
 H8_IN(adrrli)
 {
-  /*h8_adc_read(system);*/
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xc0;
   *byte = system->vmem.parts.io2.adc.adrr.raw.l;
 }
 
 H8_OUT(adrrlo)
 {
   H8_IO_DUMMY_OUT
+}
+
+H8_OUT(amro)
+{
+  h8_amr_t *amr = byte;
+  h8_amr_t new_amr;
+
+  new_amr.raw = value;
+
+  if (byte != &system->vmem.parts.io2.adc.amr)
+    return;
+
+  if (new_amr.flags.ch >= H8_ADC_AN0 && new_amr.flags.ch < H8_ADC_MAX)
+    amr->flags.ch = new_amr.flags.ch;
+  else
+    amr->flags.cks = new_amr.flags.cks;
+}
+
+H8_OUT(adsro)
+{
+  h8_adsr_t adsr;
+
+  adsr.raw = value;
+  if (adsr.flags.adsf)
+  {
+    /* Immediately complete A/DC operation upon start */
+    h8_adc_read(system);
+    adsr.flags.adsf = 0;
+  }
+
+  *byte = adsr.raw;
 }
 
 static H8_IN_T reg_ins[0x160] =
@@ -644,7 +670,7 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, adrrho, adrrlo, NULL, NULL,
+  NULL, NULL, NULL, NULL, adrrho, adrrlo, amro, adsro,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -689,13 +715,16 @@ unsigned h8_write(h8_system_t *system, const void *buffer,
     return 0;
 }
 
-void *h8_find(h8_system_t *system, unsigned address)
+h8_byte_t *h8_find(h8_system_t *system, unsigned address)
 {
 #if H8_PROFILING
   /*if (address >= 0xf780 && address < 0xff80)*/
     system->reads[address & 0xFFFF] += 1;
 #endif
-  return &system->vmem.raw[address & 0xFFFF];
+  if (address == 0xffbe)
+    return &system->vmem.raw[address];
+  else
+    return &system->vmem.raw[address & 0xFFFF];
 }
 
 static H8_IN_T h8_register_in(h8_system_t *system, unsigned address)
@@ -772,7 +801,11 @@ static void h8_byte_out(h8_system_t *system, const unsigned address,
   h8_byte_t *byte = h8_find(system, address);
 
   if (out)
+  {
+    if (byte != &system->vmem.raw[address])
+      h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Byte out wrong addr");
     out(system, byte, value);
+  }
   else
     *byte = value;
 }
@@ -2967,6 +3000,7 @@ int h8_test_bit_manip(void)
 void h8_test_bit_order(void)
 {
   h8_ccr_t ccr_test;
+  h8_amr_t amr_test;
 
   ccr_test.raw.u = 0;
   ccr_test.flags.c = 1;
@@ -3152,6 +3186,8 @@ void h8_test_size(void)
     H8_TEST_FAIL(2)
   if (sizeof(system.vmem) != 0x10000)
     H8_TEST_FAIL(3)
+  if (sizeof(system.vmem.parts.io2.adc) != 4)
+    H8_TEST_FAIL(4)
 
   printf("Size test passed!\n");
 }
