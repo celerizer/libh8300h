@@ -469,7 +469,6 @@ H8_IN(adsri)
   *byte = system->vmem.parts.io2.adc.adsr.raw;
 }
 
-/** @todo This currently reads twice when accessing ADRR as a word; fix that */
 static void h8_adc_read(h8_system_t *system)
 {
   unsigned channel = system->vmem.parts.io2.adc.amr.flags.ch;
@@ -489,28 +488,47 @@ static void h8_adc_read(h8_system_t *system)
   }
 }
 
-H8_IN(adrrhi)
-{
-  /*h8_adc_read(system);*/
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xFF;
-  *byte = system->vmem.parts.io2.adc.adrr.raw.h;
-}
-
 H8_OUT(adrrho)
 {
   H8_IO_DUMMY_OUT
 }
 
-H8_IN(adrrli)
-{
-  /*h8_adc_read(system);*/
-  system->vmem.parts.io2.adc.adrr.raw.h.u = 0xc0;
-  *byte = system->vmem.parts.io2.adc.adrr.raw.l;
-}
-
 H8_OUT(adrrlo)
 {
   H8_IO_DUMMY_OUT
+}
+
+H8_OUT(amro)
+{
+  h8_amr_t *amr = (h8_amr_t*)byte;
+  h8_amr_t new_amr;
+  H8_UNUSED(system);
+
+  new_amr.raw = value;
+
+  /* It seems like channel and other flags are set in separate commands */
+  if (new_amr.flags.ch >= H8_ADC_AN0 && new_amr.flags.ch < H8_ADC_MAX)
+    amr->flags.ch = new_amr.flags.ch;
+  else
+  {
+    amr->flags.cks = new_amr.flags.cks;
+    amr->flags.trge = new_amr.flags.trge;
+  }
+}
+
+H8_OUT(adsro)
+{
+  h8_adsr_t adsr;
+
+  adsr.raw = value;
+  if (adsr.flags.adsf)
+  {
+    /* Immediately complete A/DC operation upon start */
+    h8_adc_read(system);
+    adsr.flags.adsf = 0;
+  }
+
+  *byte = adsr.raw;
 }
 
 static H8_IN_T reg_ins[0x160] =
@@ -571,7 +589,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, adrrhi, adrrli, NULL, adsri,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, adsri,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -644,7 +662,7 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFB0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, adrrho, adrrlo, NULL, NULL,
+  NULL, NULL, NULL, NULL, adrrho, adrrlo, amro, adsro,
   /* 0xFFC0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -3152,6 +3170,8 @@ void h8_test_size(void)
     H8_TEST_FAIL(2)
   if (sizeof(system.vmem) != 0x10000)
     H8_TEST_FAIL(3)
+  if ((void*)&system.vmem.raw[0xffbe] != (void*)&system.vmem.parts.io2.adc.amr)
+    H8_TEST_FAIL(4)
 
   printf("Size test passed!\n");
 }

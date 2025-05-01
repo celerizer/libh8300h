@@ -8,7 +8,7 @@ h8_word_t h8_battery_adrr(h8_device_t *device)
   h8_word_t result;
 
   H8_UNUSED(device);
-  result.u = 256; /** @todo Configurable battery level */
+  result.u = 0xffc0; /** @todo Configurable battery level */
 
   return result;
 }
