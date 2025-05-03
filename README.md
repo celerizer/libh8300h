@@ -31,7 +31,7 @@ This will build for a big-endian target with bitfields represented as MSB-first.
 
 ## Usage
 
-- The following example code can be used to initialize a Channel F console:
+- The following example code can be used to initialize an NTR-032 console:
 
 ```c
 h8_system_t system;
@@ -42,7 +42,7 @@ h8_init(&system);
 /* Hook up all devices of a specified console */
 h8_system_init(&system, H8_SYSTEM_NTR_032);
 
-/* Add some program data to the 3851s that are now hooked up */
+/* Add some program data */
 h8_write(&system, /* pointer to program data */, 0, /* size of program data */, 0);
 ```
 
