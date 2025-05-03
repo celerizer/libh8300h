@@ -786,8 +786,8 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
 static void h8_byte_out(h8_system_t *system, const unsigned address,
                         const h8_byte_t value)
 {
-  H8_OUT_T out = h8_register_out(system, address);
-  h8_byte_t *byte = h8_find(system, address);
+  H8_OUT_T out = h8_register_out(system, address & 0xFFFF);
+  h8_byte_t *byte = h8_find(system, address & 0xFFFF);
 
   if (out)
     out(system, byte, value);
@@ -988,7 +988,7 @@ static h8_aptr erpd_l(h8_system_t *system, unsigned ers)
 /** General register, accessed as an address with 16-bit displacement */
 static h8_aptr erd16(h8_system_t *system, unsigned ers, signed d)
 {
-  return (h8_aptr)((h8_s32)(rd_l(system, ers)->u) + d);
+  return (h8_aptr)((h8_s32)(rd_l(system, ers)->u) + d) & 0xFFFF;
 }
 
 /** General register, accessed as an address with 24-bit displacement */
@@ -2353,8 +2353,9 @@ H8_OP(op6a)
     rs_md_b(system, *rd_b(system, func.l.l), system->dbus.bits.u, mov_b);
     break;
   case 0xA:
-    /** MOV.B Rs, @aa:24 */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    /** MOV.B Rs, @aa:24 @todo only works for non-extended mode */
+    h8_fetch(system);
+    rs_md_b(system, *rd_b(system, func.l.l), system->dbus.bits.u, mov_b);
     break;
   case 0xC:
     /** MOVFPE Rs, @aa:16 */
