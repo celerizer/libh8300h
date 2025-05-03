@@ -2432,7 +2432,12 @@ H8_OP(op6f)
   h8_instruction_t func = system->dbus;
 
   h8_fetch(system);
-  ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.i), rd_w(system, func.bl), mov_w);
+  if (func.bh & B1000)
+    /** MOV.W Rs, @(d:16, ERd) */
+    rs_md_w(system, *rd_w(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), mov_w);
+  else
+    /** MOV.W @(d:16, ERs), Rd */
+    ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.u), rd_w(system, func.bl), mov_w);
 }
 
 H8_OP(op70)
