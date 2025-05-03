@@ -2429,7 +2429,6 @@ H8_OP(op6e)
 
 H8_OP(op6f)
 {
-  /** MOV.W @(d:16, ERs), Rd */
   h8_instruction_t func = system->dbus;
 
   h8_fetch(system);
