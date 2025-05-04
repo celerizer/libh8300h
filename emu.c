@@ -2852,6 +2852,9 @@ void h8_step(h8_system_t *system)
 {
   H8_OP_T function;
 
+  if (system->error_code)
+    return;
+
   /** @todo While unusual, executing out of RAM is not illegal */
   if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1 ||
       system->cpu.pc > 0xF020 || system->cpu.pc < 0x0050)
