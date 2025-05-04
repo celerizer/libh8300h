@@ -2342,7 +2342,8 @@ H8_OP(op6a)
     break;
   case 0x2:
     /** MOV.B @aa:24, Rd */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    h8_fetch(system);
+    ms_rd_b(system, system->dbus.bits.u, rd_b(system, func.l.l), mov_b);
     break;
   case 0x4:
     /** MOVFPE @aa:16, Rd */
