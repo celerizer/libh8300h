@@ -2808,10 +2808,6 @@ void h8_init(h8_system_t *system)
 
   system->vmem.parts.io2.adc.adsr.flags.reserved = B00111111;
 
-  /** @todo stack pointer is not actually initialized here; just for testing */
-  system->cpu.regs[7].word.r.h.u = 0xFF;
-  system->cpu.regs[7].word.r.l.u = 0x80;
-
   /* Jump to program entrypoint */
   system->cpu.pc = h8_read_w(system, 0).u;
 }
