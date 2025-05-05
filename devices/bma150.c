@@ -72,6 +72,15 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
     unsigned address = bma->state.parts.addr + bma->count - 2;
 
     *dst = bma->data.raw[address];
+
+    /* Clear "new_data" flags for accel axis */
+    if (address == 0x02 || address == 0x03)
+      bma->data.parts.x.flags.new = 0;
+    else if (address == 0x04 || address == 0x05)
+      bma->data.parts.y.flags.new = 0;
+    else if (address == 0x06 || address == 0x07)
+      bma->data.parts.z.flags.new = 0;
+
     h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 read 0x%02X -> %02X",
            address, dst->u);
   }
