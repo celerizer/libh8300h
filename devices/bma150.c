@@ -132,3 +132,18 @@ void h8_bma150_init(h8_device_t *device)
     bma->count = 0;
   }
 }
+
+void h8_bma150_set_axis(h8_device_t *device, h8_u8 x, h8_u8 y, h8_u8 z)
+{
+  if (device && device->type == H8_DEVICE_BMA150 && device->device)
+  {
+    h8_bma150_t *bma = device->device;
+
+    bma->data[0x03] = bma->data[0x02];
+    bma->data[0x02].u = x;
+    bma->data[0x05] = bma->data[0x04];
+    bma->data[0x04].u = y;
+    bma->data[0x07] = bma->data[0x05];
+    bma->data[0x06].u = z;
+  }
+}
