@@ -6,9 +6,32 @@
 static const char *name = "Bosch BMA150 Triaxial digital acceleration sensor";
 static const h8_device_id type = H8_DEVICE_BMA150;
 
+typedef union
+{
+  H8_BITFIELD_3
+  (
+    h8_u16 data : 10,
+    h8_u16 unused : 5,
+    h8_u16 new : 1
+  ) flags;
+  h8_word_t raw;
+} h8_bma150_acc_t;
+
 typedef struct
 {
-  h8_byte_t data[0x80];
+  union
+  {
+    struct
+    {
+      h8_u8 chip_id;
+      h8_u8 version;
+      h8_bma150_acc_t x;
+      h8_bma150_acc_t y;
+      h8_bma150_acc_t z;
+      h8_u8 unsorted[0x78];
+    } parts;
+    h8_byte_t raw[0x80];
+  } data;
 
   union
   {
@@ -22,7 +45,7 @@ typedef struct
 
   h8_u8 count;
 
-  h8_bool selected;
+  h8_u16 selected;
 } h8_bma150_t;
 
 #define H8_BMA150_WRITING 0
@@ -48,7 +71,7 @@ void h8_bma150_read(h8_device_t *device, h8_byte_t *dst)
   {
     unsigned address = bma->state.parts.addr + bma->count - 2;
 
-    *dst = bma->data[address];
+    *dst = bma->data.raw[address];
     h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 read 0x%02X -> %02X",
            address, dst->u);
   }
@@ -77,7 +100,7 @@ void h8_bma150_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       {
         h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 write 0x%02X -> %02X",
                bma->state.parts.addr, value.u);
-        bma->data[bma->state.parts.addr] = value;
+        bma->data.raw[bma->state.parts.addr] = value;
       }
       else
         h8_log(H8_LOG_INFO, H8_LOG_SSU, "BMA150 ERROR attempted write to "
@@ -107,43 +130,43 @@ void h8_bma150_init(h8_device_t *device)
     device->load = NULL; /** @todo */
 
     /** 3. Global Memory Map - Figure 1 */
-    bma->data[0x00].u = B00000010;
+    bma->data.raw[0x00].u = B00000010;
     /** @todo al_version and ml_version?
-    bma->data[0x01].u = ??? */
-    bma->data[0x0B].u = B00000011;
-    bma->data[0x0C].u = 20;
-    bma->data[0x0D].u = 150;
-    bma->data[0x0E].u = 160;
-    bma->data[0x0F].u = 150;
-    bma->data[0x12].u = 162;
-    bma->data[0x13].u = 13;
-    bma->data[0x14].u = B00001110;
-    bma->data[0x15].u = B10000000;
-    bma->data[0x2B].u = B00000011;
-    bma->data[0x2C].u = 20;
-    bma->data[0x2D].u = 150;
-    bma->data[0x2E].u = 160;
-    bma->data[0x2F].u = 150;
-    bma->data[0x32].u = 162;
-    bma->data[0x33].u = 13;
-    bma->data[0x34].u = B00001110;
-    bma->data[0x35].u = B10000000;
+    bma->data.raw[0x01].u = ??? */
+    bma->data.raw[0x0B].u = B00000011;
+    bma->data.raw[0x0C].u = 20;
+    bma->data.raw[0x0D].u = 150;
+    bma->data.raw[0x0E].u = 160;
+    bma->data.raw[0x0F].u = 150;
+    bma->data.raw[0x12].u = 162;
+    bma->data.raw[0x13].u = 13;
+    bma->data.raw[0x14].u = B00001110;
+    bma->data.raw[0x15].u = B10000000;
+    bma->data.raw[0x2B].u = B00000011;
+    bma->data.raw[0x2C].u = 20;
+    bma->data.raw[0x2D].u = 150;
+    bma->data.raw[0x2E].u = 160;
+    bma->data.raw[0x2F].u = 150;
+    bma->data.raw[0x32].u = 162;
+    bma->data.raw[0x33].u = 13;
+    bma->data.raw[0x34].u = B00001110;
+    bma->data.raw[0x35].u = B10000000;
 
     bma->count = 0;
   }
 }
 
-void h8_bma150_set_axis(h8_device_t *device, h8_u8 x, h8_u8 y, h8_u8 z)
+void h8_bma150_set_axis(h8_device_t *device, h8_u16 x, h8_u16 y, h8_u16 z)
 {
   if (device && device->type == H8_DEVICE_BMA150 && device->device)
   {
     h8_bma150_t *bma = device->device;
 
-    bma->data[0x03] = bma->data[0x02];
-    bma->data[0x02].u = x;
-    bma->data[0x05] = bma->data[0x04];
-    bma->data[0x04].u = y;
-    bma->data[0x07] = bma->data[0x05];
-    bma->data[0x06].u = z;
+    bma->data.parts.x.flags.data = x;
+    bma->data.parts.x.flags.new = 1;
+    bma->data.parts.y.flags.data = y;
+    bma->data.parts.y.flags.new = 1;
+    bma->data.parts.z.flags.data = z;
+    bma->data.parts.z.flags.new = 1;
   }
 }
