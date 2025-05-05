@@ -101,6 +101,14 @@ typedef union h8_sscrh_t
   ) flags;
   h8_byte_t raw;
 } h8_sscrh_t;
+#define H8_REG_SSCRH 0xF0E0
+
+/** 15.3.2 SS Control Register L (SSCRL) */
+typedef union h8_sscrl_t
+{
+  h8_byte_t raw;
+} h8_sscrl_t;
+#define H8_REG_SSCRL 0xF0E1
 
 /** 15.3.3 SS Mode Register (SSMR) */
 typedef union h8_ssmr_t
@@ -177,7 +185,7 @@ typedef union h8_sssr_t
 typedef struct
 {
   h8_sscrh_t sscrh;
-  h8_byte_t sscrl;
+  h8_sscrl_t sscrl;
   h8_ssmr_t ssmr;
   h8_sser_t sser;
   h8_sssr_t sssr;
