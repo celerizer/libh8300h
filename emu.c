@@ -1393,8 +1393,12 @@ H8_OP(op01)
     switch (system->dbus.a.u)
     {
     case 0x69:
-      /** MOV.L ERs, @ERd */
-      rs_md_l(system, *rd_l(system, system->dbus.bl), er(system, system->dbus.bh), mov_l);
+      if (system->dbus.bh & B1000)
+        /** MOV.L ERs, @ERd */
+        rs_md_l(system, *rd_l(system, system->dbus.bl), er(system, system->dbus.bh), mov_l);
+      else
+        /** MOV.L @ERs, ERd */
+        ms_rd_l(system, er(system, system->dbus.bh), rd_l(system, system->dbus.bl), mov_l);
       break;
     case 0x6B:
     {
@@ -2502,6 +2506,14 @@ H8_OP(op77)
     bld(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
 }
 
+H8_OP(op78)
+{
+  /** @todo */
+  h8_fetch(system);
+  h8_fetch(system);
+  h8_fetch(system);
+}
+
 H8_OP(op79)
 {
   h8_instruction_t curr = system->dbus;
@@ -2848,7 +2860,7 @@ static H8_OP_T funcs[256] =
   op60, op61, op62, op63, op64, op65, op66, op67,
   op68, op69, op6a, op6b, op6c, op6d, op6e, op6f,
   op70, op71, op72, op73, NULL, NULL, NULL, op77,
-  NULL, op79, op7a, NULL, NULL, op7d, op7e, op7f,
+  op78, op79, op7a, NULL, NULL, op7d, op7e, op7f,
   op80, op81, op82, op83, op84, op85, op86, op87,
   op88, op89, op8a, op8b, op8c, op8d, op8e, op8f,
   op90, op91, op92, op93, op94, op95, op96, op97,
