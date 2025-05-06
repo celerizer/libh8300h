@@ -10,9 +10,9 @@ typedef union
 {
   H8_BITFIELD_3
   (
-    h8_u16 data : 10,
+    h8_u16 new : 1,
     h8_u16 unused : 5,
-    h8_u16 new : 1
+    h8_u16 data : 10
   ) flags;
   h8_word_t raw;
 } h8_bma150_acc_t;
