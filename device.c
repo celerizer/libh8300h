@@ -96,7 +96,6 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
-      /** @todo Which AD/C channel is this on in NTR-032? */
       { H8_DEVICE_BATTERY, 3, h8_battery_adrr },
       { ADC_END }
     },
@@ -125,7 +124,7 @@ static const h8_system_preset_t h8_systems[] =
       {
         H8_DEVICE_3BUTTON,
         H8_HOOKUP_PORT_B,
-        { h8_buttons_in_0, h8_buttons_in_1, h8_buttons_in_2, NULL },
+        { h8_buttons_in_0, NULL, h8_buttons_in_1, NULL, h8_buttons_in_2, NULL },
         { NULL }
       },
 
