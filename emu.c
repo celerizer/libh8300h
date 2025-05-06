@@ -150,16 +150,32 @@ static void extu_l(h8_system_t *system, h8_long_t *dst)
 
 static void exts_w(h8_system_t *system, h8_word_t *dst)
 {
-  dst->h.u = (dst->l.u & B10000000) ? 0xFF : 0x00;
-  system->cpu.ccr.flags.n = 0; /** @todo was this right? */
+  if (dst->l.u & B10000000)
+  {
+    dst->h.u = 0xFF;
+    system->cpu.ccr.flags.n = 1;
+  }
+  else
+  {
+    dst->h.u = 0x00;
+    system->cpu.ccr.flags.n = 0;
+  }
   system->cpu.ccr.flags.z = dst->u == 0;
   system->cpu.ccr.flags.v = 0;
 }
 
 static void exts_l(h8_system_t *system, h8_long_t *dst)
 {
-  dst->h.u = (dst->c.u & B10000000) ? 0xFFFF : 0x0000;
-  system->cpu.ccr.flags.n = (dst->c.u & B10000000) ? 1 : 0;
+  if (dst->b.u & B10000000)
+  {
+    dst->h.u = 0xFFFF;
+    system->cpu.ccr.flags.n = 1;
+  }
+  else
+  {
+    dst->h.u = 0x0000;
+    system->cpu.ccr.flags.n = 0;
+  }
   system->cpu.ccr.flags.z = dst->u == 0;
   system->cpu.ccr.flags.v = 0;
 }
