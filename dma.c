@@ -6,13 +6,7 @@
 static h8_u8 h8_heap[H8_NO_DMA_SIZE];
 static unsigned h8_heap_alloc = 0;
 
-void h8_dma_oom_cb_default(void)
-{
-  printf("Out of memory error! (%u of %u)\n", h8_heap_alloc, H8_NO_DMA_SIZE);
-  exit(1);
-}
-
-static void (*h8_dma_oom_cb)(void) = h8_dma_oom_cb_default;
+static void (*h8_dma_oom_cb)(void) = NULL;
 #else
 #include <stdlib.h>
 #endif
@@ -61,7 +55,7 @@ void h8_dma_free(void *value)
 #endif
 }
 
-void h8_dma_set_oom_cb(void *cb)
+void h8_dma_set_oom_cb(void (*cb)(void))
 {
 #if H8_NO_DMA
   h8_dma_oom_cb = cb;
