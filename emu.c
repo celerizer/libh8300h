@@ -1118,29 +1118,29 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
 h8_word_t mulxu_b(h8_word_t dst, const h8_byte_t src)
 {
   h8_word_t result;
-  result.u = src.u * dst.l.u;
+  result.i = src.i * dst.l.i;
   return result;
 }
 
 h8_long_t mulxu_w(h8_long_t dst, const h8_word_t src)
 {
   h8_long_t result;
-  result.u = src.u * dst.l.u;
+  result.i = src.i * dst.l.i;
   return result;
 }
 
-h8_word_t mulxs_b(h8_system_t *system, h8_byte_t src, h8_byte_t dst)
+h8_word_t mulxs_b(h8_system_t *system, h8_word_t dst, const h8_byte_t src)
 {
   h8_word_t result;
-  result.i = src.i * dst.i;
+  result.i = src.i * dst.l.i;
   ccr_zn(system, result.i);
   return result;
 }
 
-h8_long_t mulxs_w(h8_system_t *system, h8_word_t src, h8_word_t dst)
+h8_long_t mulxs_w(h8_system_t *system, h8_long_t dst, const h8_word_t src)
 {
   h8_long_t result;
-  result.i = src.i * dst.i;
+  result.i = src.i * dst.l.i;
   ccr_zn(system, result.i);
   return result;
 }
@@ -1388,7 +1388,6 @@ H8_OP(op01)
   switch (system->dbus.b.u)
   {
   case 0x00:
-    /** @todo MOV.L stuff */
     h8_fetch(system);
     switch (system->dbus.a.u)
     {
@@ -1497,11 +1496,11 @@ H8_OP(op01)
     {
     case 0x50:
       /** MULXS.B Rs, Rd */
-      *rd_w(system, system->dbus.bl) = mulxs_b(system, *rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
+      *rd_w(system, system->dbus.bl) = mulxs_b(system, *rd_w(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
       break;
     case 0x52:
       /** MULXS.W Rs, ERd */
-      *rd_l(system, system->dbus.bl) = mulxs_w(system, *rd_w(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
+      *rd_l(system, system->dbus.bl) = mulxs_w(system, *rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
       break;
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2110,7 +2109,10 @@ H8_OP(op51)
 H8_OP(op52)
 {
   /** MULXU.W Rs, ERd */
-  *rd_l(system, system->dbus.bl) = mulxu_w(*rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
+  if (system->dbus.bl & B1000)
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  else
+    *rd_l(system, system->dbus.bl) = mulxu_w(*rd_l(system, system->dbus.bl), *rd_w(system, system->dbus.bh));
 }
 
 H8_OP(op53)
