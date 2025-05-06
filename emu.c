@@ -1313,12 +1313,14 @@ void btst(h8_system_t *system, h8_byte_t *dst, unsigned src)
 
 h8_byte_t bst(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
-  dst.u |= (system->cpu.ccr.flags.c << (src.u & B00000111));
+  dst.u &= ~(1 << src.u);
+  dst.u |= (system->cpu.ccr.flags.c << (src.u));
   return dst;
 }
 
 h8_byte_t bist(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
+  /** @todo wrong see above */
   dst.u &= ~(system->cpu.ccr.flags.c << (src.u & B00000111));
   return dst;
 }
