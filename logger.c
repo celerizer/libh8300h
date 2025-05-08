@@ -31,6 +31,9 @@ void h8_log(h8_log_level level, h8_log_source source, const char *fmt, ...)
     case H8_LOG_SSU:
       source_str = "SSU";
       break;
+    case H8_LOG_IR:
+      source_str = "IR ";
+      break;
     default:
       source_str = "???";
       break;

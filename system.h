@@ -215,7 +215,8 @@ typedef struct
 
 typedef struct
 {
-  h8_byte_t unimplemented1[0x38];
+  h8_byte_t unimplemented1[0x20];
+  h8_sci3_t sci3;
   h8_wdt_t wdt;
   h8_adc_t adc;
   h8_byte_t unimplemented2[0x40];

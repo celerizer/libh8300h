@@ -9,6 +9,7 @@ typedef enum
   H8_LOG_LCD,
   H8_LOG_EEP,
   H8_LOG_SSU,
+  H8_LOG_IR,
 
   H8_LOG_SOURCE_SIZE
 } h8_log_source;
