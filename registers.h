@@ -41,6 +41,71 @@ typedef union
 
 typedef union
 {
+  H8_BITFIELD_3
+  (
+    /**
+     * Reserved
+     * These bits are always read as 0 and cannot be modified.
+     */
+    h8_u8 reserved : 4,
+
+    /**
+     * IrDA Clock Select (unimplemented)
+     */
+    h8_u8 clock_select : 3,
+
+    /**
+     * IrDA Enable
+     * Selects whether the SCI3 I/O pins function as the SCI3 or IrDA.
+     */
+    h8_u8 enable : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_ircr_t;
+
+typedef union
+{
+  H8_BITFIELD_6
+  (
+    /**
+     * RXD3/IrRXD Pin Input Data Inversion Switch (unimplemented)
+     * Selects whether input data of the RXD3/IrRXD pin is inverted or not.
+     */
+    h8_u8 scinv0 : 1,
+
+    h8_u8 scinv1 : 1,
+
+    h8_u8 reserved1 : 2,
+
+    /**
+     * P32/TXD3/IrTXD Pin Function Switch
+     * Selects whether pin P32/TXD3/IrTXD is used as P32 or as TXD3/IrTXD.
+     */
+    h8_u8 spc3 : 1,
+
+    h8_u8 reserved2 : 1,
+
+    h8_u8 reserved3 : 2
+  ) flags;
+  h8_byte_t raw;
+} h8_scr3_t;
+
+typedef struct
+{
+  h8_byte_t smr3;
+  h8_byte_t brr3;
+  h8_scr3_t scr3;
+  h8_byte_t tdr3;
+  h8_byte_t ssr3;
+  h8_byte_t rdr3;
+  h8_byte_t semr;
+  h8_byte_t unknown1[8];
+  h8_ircr_t ircr;
+  h8_byte_t unknown2[8];
+} h8_sci3_t;
+
+typedef union
+{
   H8_BITFIELD_2
   (
     h8_u8 cks : 4,
