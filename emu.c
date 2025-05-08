@@ -2831,8 +2831,11 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io1.tw.grd.h.u = 0xFF;
   system->vmem.parts.io1.tw.grd.l.u = 0xFF;
 
-  system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
+  system->vmem.parts.io2.sci3.scr3.raw.u = B11000000;
+  system->vmem.parts.io2.sci3.brr3.u = 0xFF;
+  system->vmem.parts.io2.sci3.tdr3.u = 0xFF;
 
+  system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b0wi = 1;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.wdon = 1;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b2wi = 1;
