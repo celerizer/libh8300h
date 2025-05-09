@@ -1,35 +1,26 @@
 #include "accelerometer.h"
 
-#include <stdlib.h> /** @todo remove */
+#include "generic_adc.h"
 
-static const char *name = "2-axis analog accelerometer";
-static const h8_device_id type = H8_DEVICE_ACCELEROMETER;
+static const char *name_x = "Analog accelerometer X";
+static const char *name_y = "Analog accelerometer Y";
 
-h8_word_t h8_accelerometer_adrr_x(h8_device_t *device)
-{
-  h8_word_t result;
-
-  H8_UNUSED(device);
-  result.u = rand() % 32; /** @todo */
-
-  return result;
-}
-
-h8_word_t h8_accelerometer_adrr_y(h8_device_t *device)
-{
-  h8_word_t result;
-
-  H8_UNUSED(device);
-  result.u = rand() % 32; /** @todo */
-
-  return result;
-}
-
-void h8_accelerometer_init(h8_device_t *device)
+void h8_accelerometer_init_x(h8_device_t *device)
 {
   if (device)
   {
-    device->name = name;
-    device->type = type;
+    h8_generic_adc_init(device);
+    device->name = name_x;
+    device->type = H8_DEVICE_ACCELEROMETER_X;
+  }
+}
+
+void h8_accelerometer_init_y(h8_device_t *device)
+{
+  if (device)
+  {
+    h8_generic_adc_init(device);
+    device->name = name_y;
+    device->type = H8_DEVICE_ACCELEROMETER_Y;
   }
 }

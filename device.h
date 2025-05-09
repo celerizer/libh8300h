@@ -48,7 +48,8 @@ typedef enum
   H8_DEVICE_IRDA_CONTROL,
 
   /* A 2-axis analog accelerometer */
-  H8_DEVICE_ACCELEROMETER,
+  H8_DEVICE_ACCELEROMETER_X,
+  H8_DEVICE_ACCELEROMETER_Y,
 
   /* A generic device that represents battery level */
   H8_DEVICE_BATTERY,

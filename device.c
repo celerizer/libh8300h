@@ -22,8 +22,8 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_027,
     { 0x82341b9f, 0 },
     {
-      { H8_DEVICE_ACCELEROMETER, 0, h8_accelerometer_adrr_x },
-      { H8_DEVICE_ACCELEROMETER, 1, h8_accelerometer_adrr_y },
+      { H8_DEVICE_ACCELEROMETER_X, 0, h8_generic_adrr_get },
+      { H8_DEVICE_ACCELEROMETER_Y, 1, h8_generic_adrr_get },
       { H8_DEVICE_BATTERY, 2, h8_generic_adrr_max },
       { ADC_END }
     },
@@ -150,8 +150,11 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
     case H8_DEVICE_3BUTTON:
       device->init = h8_buttons_init_3b;
       break;
-    case H8_DEVICE_ACCELEROMETER:
-      device->init = h8_accelerometer_init;
+    case H8_DEVICE_ACCELEROMETER_X:
+      device->init = h8_accelerometer_init_x;
+      break;
+    case H8_DEVICE_ACCELEROMETER_Y:
+      device->init = h8_accelerometer_init_y;
       break;
     case H8_DEVICE_BATTERY:
       device->init = h8_battery_init;
