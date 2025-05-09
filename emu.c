@@ -3214,8 +3214,16 @@ void h8_test_size(void)
     H8_TEST_FAIL(2)
   if (sizeof(system.vmem) != 0x10000)
     H8_TEST_FAIL(3)
-  if ((void*)&system.vmem.raw[0xffbe] != (void*)&system.vmem.parts.io2.adc.amr)
+  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO1] != (void*)&system.vmem.parts.io1)
     H8_TEST_FAIL(4)
+  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO2] != (void*)&system.vmem.parts.io2)
+    H8_TEST_FAIL(5)
+  if ((void*)&system.vmem.raw[0xff98] != (void*)&system.vmem.parts.io2.sci3.smr3)
+    H8_TEST_FAIL(6)
+  if ((void*)&system.vmem.raw[0xffb0] != (void*)&system.vmem.parts.io2.wdt.tmwd)
+    H8_TEST_FAIL(7)
+  if ((void*)&system.vmem.raw[0xffbe] != (void*)&system.vmem.parts.io2.adc.amr)
+    H8_TEST_FAIL(8)
 
   printf("Size test passed!\n");
 }
