@@ -1,22 +1,15 @@
 #include "battery.h"
 
+#include "generic_adc.h"
+
 static const char *name = "CR2032 battery";
 static const h8_device_id type = H8_DEVICE_BATTERY;
-
-h8_word_t h8_battery_adrr(h8_device_t *device)
-{
-  h8_word_t result;
-
-  H8_UNUSED(device);
-  result.u = 0xffc0; /** @todo Configurable battery level */
-
-  return result;
-}
 
 void h8_battery_init(h8_device_t *device)
 {
   if (device)
   {
+    h8_generic_adc_init(device);
     device->name = name;
     device->type = type;
   }

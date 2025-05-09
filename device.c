@@ -6,6 +6,7 @@
 #include "devices/eeprom.h"
 #include "devices/factory_control.h"
 #include "devices/generic.h"
+#include "devices/generic_adc.h"
 #include "devices/lcd.h"
 #include "devices/led.h"
 #include "system.h"
@@ -23,7 +24,7 @@ static const h8_system_preset_t h8_systems[] =
     {
       { H8_DEVICE_ACCELEROMETER, 0, h8_accelerometer_adrr_x },
       { H8_DEVICE_ACCELEROMETER, 1, h8_accelerometer_adrr_y },
-      { H8_DEVICE_BATTERY, 2, h8_battery_adrr },
+      { H8_DEVICE_BATTERY, 2, h8_generic_adrr_max },
       { ADC_END }
     },
     {
@@ -96,7 +97,7 @@ static const h8_system_preset_t h8_systems[] =
     H8_SYSTEM_NTR_032,
     { 0xd4a05446, 0 },
     {
-      { H8_DEVICE_BATTERY, 3, h8_battery_adrr },
+      { H8_DEVICE_BATTERY, 3, h8_generic_adrr_max },
       { ADC_END }
     },
     {
