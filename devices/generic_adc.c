@@ -54,7 +54,7 @@ h8_word_t h8_generic_adrr_half(h8_device_t *device)
   h8_word_t value;
 
   H8_UNUSED(device);
-  value.u = 0x03E0;
+  value.u = 0xFF80;
 
   return value;
 }
