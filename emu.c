@@ -1955,6 +1955,12 @@ H8_OP(op1d)
           rd_w(system, system->dbus.bl), cmp_w);
 }
 
+H8_OP(op1e)
+{
+  /** SUBX Rs, Rd */
+  subx(system, rd_b(system, system->dbus.bl), *rd_b(system, system->dbus.bh));
+}
+
 H8_OP(op1f)
 {
   if (system->dbus.bh == 0x0)

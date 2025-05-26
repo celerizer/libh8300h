@@ -224,6 +224,8 @@ typedef struct
 } h8_io2_t;
 
 #define H8_MEMORY_REGION_IO1 0xF020
+#define H8_MEMORY_REGION_RAM_2K 0xF780
+#define H8_MEMORY_REGION_RAM_1K 0xFB80
 #define H8_MEMORY_REGION_IO2 0xFF80
 
 typedef union
