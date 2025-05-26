@@ -61,8 +61,14 @@ typedef struct
 
   h8_bool segment_remap, internal_oscillator, display_on;
 
+  /**
+   * 6-bit contrast value. NTR-032 program refers to this as "shade" with
+   * selectable range of 22-31. Startup initializes it to 26.
+   */
+  h8_u8 contrast;
+
   /** Various unimplemented parameters */
-  h8_u8 start_line, display_offset, multiplex_ratio, contrast, nline_inversion,
+  h8_u8 start_line, display_offset, multiplex_ratio, nline_inversion,
         dcdc_factor, irr_ratio, lcd_bias, pwm_frc, power_control;
 
   h8_u8 palette_modes[H8_LCD_PALETTE_SIZE];
