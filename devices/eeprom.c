@@ -116,11 +116,6 @@ h8_bool h8_eeprom_deserialize(h8_device_t *device, const h8_u8 **data,
   {
     h8_eeprom_t *m_eeprom = (h8_eeprom_t*)device->device;
 
-    /*if (*size < m_eeprom->length +
-        sizeof(m_eeprom->rx_buf) +
-        sizeof(m_eeprom->rx_pos))
-      return FALSE;*/
-
     memcpy(m_eeprom->data, *data, m_eeprom->length);
     *data += m_eeprom->length;
     *size += m_eeprom->length;
@@ -238,10 +233,10 @@ void h8_eeprom_init(h8_device_t *device, unsigned type)
   if (device)
   {
     h8_eeprom_t *eeprom = h8_dma_alloc(sizeof(h8_eeprom_t), TRUE);
+    unsigned size = type == H8_DEVICE_EEPROM_8K ? 8 * 1024 : 64 * 1024;
 
-    eeprom->data = h8_dma_alloc(type == H8_DEVICE_EEPROM_8K ? 8 * 1024 :
-                                                              64 * 1024, FALSE);
-    eeprom->length = type == H8_DEVICE_EEPROM_8K ? 8 * 1024 : 64 * 1024;
+    eeprom->data = h8_dma_alloc(size, FALSE);
+    eeprom->length = size;
 
     device->name = type == H8_DEVICE_EEPROM_8K ? name_8k : name_64k;
     device->type = type;
