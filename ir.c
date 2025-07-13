@@ -23,9 +23,11 @@ h8_bool h8_ir_in(h8_ir_t *ir, h8_byte_t *in)
 {
   if (ir->rx_len > 0)
   {
+    unsigned i;
+
     *in = ir->rx[0];
     ir->rx_len--;
-    for (unsigned i = 0; i < ir->rx_len; i++)
+    for (i = 0; i < ir->rx_len; i++)
       ir->rx[i] = ir->rx[i + 1];
 
     return TRUE;
