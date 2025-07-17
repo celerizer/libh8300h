@@ -166,7 +166,7 @@ static void exts_w(h8_system_t *system, h8_word_t *dst)
 
 static void exts_l(h8_system_t *system, h8_long_t *dst)
 {
-  if (dst->b.u & B10000000)
+  if (dst->c.u & B10000000)
   {
     dst->h.u = 0xFFFF;
     system->cpu.ccr.flags.n = 1;
