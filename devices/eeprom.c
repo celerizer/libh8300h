@@ -64,8 +64,8 @@ typedef struct
   unsigned length;
   h8_word_t address;
   h8_u8 command;
-  h8_s8 position;
   h8_bool selected;
+  signed position;
   union
   {
     H8_BITFIELD_5
