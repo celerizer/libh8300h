@@ -278,20 +278,20 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
 
 #elif H8_HAVE_NETWORK_STUB
 
-h8_bool h8_network_init(h8_network_ctx_t *ctx)
+h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
 {
   (void)ctx;
   return FALSE;
 }
 
-h8_bool h8_network_transmit(const void *data, unsigned size)
+h8_bool h8_fe_network_transmit(const void *data, unsigned size)
 {
   (void)data;
   (void)size;
   return FALSE;
 }
 
-unsigned h8_network_receive(void *buffer, unsigned size)
+unsigned h8_fe_network_receive(void *buffer, unsigned size)
 {
   (void)buffer;
   (void)size;
