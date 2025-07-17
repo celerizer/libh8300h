@@ -1,5 +1,7 @@
 # libh8300h
 
+![Stepdad_k3bHvQzzLc](https://github.com/user-attachments/assets/b9f266ea-cb6c-4f5d-bbb4-b6a1f20bdfa8)
+
 **libh8300h** (name pending) is an emulation library for the Hitachi H8/300H, developed for the purpose of writing Stepdad, an emulator for small pedometer devices.
 
 libh8300h is written to maintain maximum compatibility across different build targets by adhering to C89 standards, minimizing the use of standard libraries, and providing extensive configuration options.
