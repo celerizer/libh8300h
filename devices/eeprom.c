@@ -212,8 +212,8 @@ void h8_eeprom_write(h8_device_t *device, h8_byte_t *dst, h8_byte_t value)
       {
         eeprom->data[eeprom->address.u] = value;
         h8_log(H8_LOG_INFO, H8_LOG_EEP, "write 0x%04X -> %02X %c",
-             eeprom->address.u, dst->u,
-             (dst->u >= 0x20 && dst->u <= 0x7E) ? dst->i : '\0');
+             eeprom->address.u, value.u,
+             (value.u >= 0x20 && value.u <= 0x7E) ? value.u : '\0');
       }
       eeprom->address.u++;
       goto end;
