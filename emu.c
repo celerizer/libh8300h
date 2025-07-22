@@ -802,13 +802,19 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
 static void h8_byte_out(h8_system_t *system, const unsigned address,
                         const h8_byte_t value)
 {
-  H8_OUT_T out = h8_register_out(system, address & 0xFFFF);
-  h8_byte_t *byte = h8_find(system, address & 0xFFFF);
+  if (address >= H8_MEMORY_REGION_IO1)
+  {
+    H8_OUT_T out = h8_register_out(system, address & 0xFFFF);
+    h8_byte_t *byte = h8_find(system, address & 0xFFFF);
 
-  if (out)
-    out(system, byte, value);
+    if (out)
+      out(system, byte, value);
+    else
+      *byte = value;
+  }
   else
-    *byte = value;
+    h8_log(H8_LOG_WARN, H8_LOG_CPU,
+           "Write to invalid address 0x%04X -> 0x%02X", address, value.u);
 }
 
 static h8_byte_t h8_read_b(h8_system_t *system, const unsigned address)
