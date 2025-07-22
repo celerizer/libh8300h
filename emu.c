@@ -107,7 +107,7 @@ H8_SUB_OP(w, h8_word_t, 12)
 H8_SUB_OP(l, h8_long_t, 28)
 
 /** Subtract immediate without modifying status bits */
-void subs_l(h8_system_t *system, h8_long_t *dst, const unsigned src)
+void subs_l(h8_system_t *system, h8_long_t *dst, const int src)
 {
   H8_UNUSED(system);
   dst->i = dst->i - src;
