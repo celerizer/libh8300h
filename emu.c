@@ -802,7 +802,9 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
 static void h8_byte_out(h8_system_t *system, const unsigned address,
                         const h8_byte_t value)
 {
-  if (address >= H8_MEMORY_REGION_IO1)
+  if ((address >= H8_MEMORY_REGION_IO1 &&
+        address < H8_MEMORY_REGION_IO1 + sizeof(system->vmem.parts.io1)) ||
+      address >= H8_MEMORY_REGION_RAM_2K)
   {
     H8_OUT_T out = h8_register_out(system, address & 0xFFFF);
     h8_byte_t *byte = h8_find(system, address & 0xFFFF);
