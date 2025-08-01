@@ -40,13 +40,21 @@ void h8_ir_receive(h8_ir_t *ir)
 {
   char log[32];
   unsigned i;
+  unsigned len = 0;
 
   log[0] = '\0';
-  for (i = 0; i < ir->rx_len; i++)
-    snprintf(log, sizeof(log), "%s%02X", log, ir->rx[i].u);
+
+  for (i = 0; i < ir->rx_len && len < sizeof(log) - 3; i++)
+  {
+    int written = snprintf(&log[len], sizeof(log) - len, "%02X", ir->rx[i].u);
+
+    if (written < 0 || (size_t)written >= sizeof(log) - len)
+      break;
+    len += written;
+  }
 
   h8_log(H8_LOG_WARN, H8_LOG_IR, "Unimplemented receive: %u <- %s",
-                                 ir->rx_len, log);
+         ir->rx_len, log);
   h8_fe_network_receive(ir->rx, ir->rx_len);
   ir->rx_len = 0;
 }
@@ -55,13 +63,21 @@ void h8_ir_transmit(h8_ir_t *ir)
 {
   char log[32];
   unsigned i;
+  unsigned len = 0;
 
   log[0] = '\0';
-  for (i = 0; i < ir->tx_len; i++)
-    snprintf(log, sizeof(log), "%s%02X", log, ir->tx[i].u);
+
+  for (i = 0; i < ir->tx_len && len < sizeof(log) - 3; i++)
+  {
+    int written = snprintf(&log[len], sizeof(log) - len, "%02X", ir->tx[i].u);
+
+    if (written < 0 || (size_t)written >= sizeof(log) - len)
+      break;
+    len += written;
+  }
 
   h8_log(H8_LOG_WARN, H8_LOG_IR, "Unimplemented transmit: %u -> %s",
-                                 ir->tx_len, log);
+         ir->tx_len, log);
   h8_fe_network_transmit(ir->tx, ir->tx_len);
   ir->tx_len = 0;
 }
