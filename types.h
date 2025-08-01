@@ -265,8 +265,8 @@ typedef union
       };
       h8_byte_t a;
     };
-  };
 #endif
+  };
   h8_word_t bits;
 } h8_instruction_t;
 
