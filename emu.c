@@ -791,6 +791,7 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
   H8_IN_T in = h8_register_in(system, address);
   h8_byte_t *byte = h8_find(system, address);
 
+  /** @todo Hack: keep sleep mode off */
   system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
 
   if (in)
@@ -1316,11 +1317,27 @@ h8_byte_t bnot(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 
 void btst(h8_system_t *system, h8_byte_t *dst, unsigned src)
 {
+#if H8_SAFETY
+  if (src > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BTST parameter - %02X at %04X",
+           src, system->cpu.pc - 2);
+  }
+#endif
   system->cpu.ccr.flags.z = dst->u & (1 << (src & B00000111)) ? 0 : 1;
 }
 
 h8_byte_t bst(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
+#if H8_SAFETY
+  if (src.u > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BST parameter - %02X at %04X",
+           src.u, system->cpu.pc - 2);
+  }
+#endif
   dst.u &= ~(1 << src.u);
   dst.u |= (system->cpu.ccr.flags.c << (src.u));
   return dst;
@@ -1328,27 +1345,51 @@ h8_byte_t bst(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 
 h8_byte_t bist(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
-  /** @todo wrong see above */
-  dst.u &= ~(system->cpu.ccr.flags.c << (src.u & B00000111));
+#if H8_SAFETY
+  if (src.u > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BIST parameter - %02X at %04X",
+           src.u, system->cpu.pc - 2);
+  }
+#endif
+  dst.u &= ~(1 << src.u);
+  dst.u |= ((!system->cpu.ccr.flags.c) << src.u);
   return dst;
 }
 
 void bld(h8_system_t *system, h8_byte_t val, unsigned bit)
 {
-  system->cpu.ccr.flags.c = val.u & (1 << (bit & 7)) ? 1 : 0;
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BLD parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c = val.u & (1 << (bit & B00000111)) ? 1 : 0;
 }
 
 void bild(h8_system_t *system, h8_byte_t val, unsigned bit)
 {
-  system->cpu.ccr.flags.c = val.u & (1 << (bit & 7)) ? 0 : 1;
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BILD parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c = val.u & (1 << (bit & B00000111)) ? 0 : 1;
 }
 
 void bsr(h8_system_t *system, signed offset)
 {
 #if H8_SAFETY
-  if (offset > INT16_MAX || offset < INT16_MIN)
+  if (offset > 0x7fff || offset < -0x7fff)
   {
-    H8_ERROR(H8_DEBUG_INVALID_PARAMETER;
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
     return;
   }
   else
