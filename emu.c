@@ -2634,13 +2634,18 @@ H8_OP(op7d)
       rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bclr);
       break;
     case 0x7:
+    {
+      h8_byte_t immediate;
+
+      immediate.u = system->dbus.bh;
       if (system->dbus.bh & B1000)
         /** BIST #xx:3, @ERd */
-        rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bist);
+        rs_md_b(system, immediate, er(system, func.l.u), bist);
       else
         /** BST #xx:3, @ERd */
-        rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bst);
+        rs_md_b(system, immediate, er(system, func.l.u), bst);
       break;
+    }
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
     }
@@ -2728,13 +2733,18 @@ H8_OP(op7f)
       rs_md_b(system, *rd_b(system, system->dbus.bh), aa8(func.l), bclr);
       break;
     case 0x7:
+    {
+      h8_byte_t immediate;
+
+      immediate.u = system->dbus.bh;
       if (system->dbus.bh & B1000)
         /** BIST #xx:3, @aa:8 */
-        rs_md_b(system, *rd_b(system, system->dbus.bh), aa8(func.l), bist);
+        rs_md_b(system, immediate, aa8(func.l), bist);
       else
         /** BST #xx:3, @aa:8 */
-        rs_md_b(system, *rd_b(system, system->dbus.bh), aa8(func.l), bst);
+        rs_md_b(system, immediate, aa8(func.l), bst);
       break;
+    }
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
     }
