@@ -1,4 +1,4 @@
-#include "generic.h"
+#include "generic_adc.h"
 
 #include "../dma.h"
 
