@@ -215,12 +215,12 @@ typedef struct
 
 typedef struct
 {
-  h8_byte_t unimplemented1[0x18];
-  h8_sci3_t sci3;
+  h8_byte_t unknown1[0x0C];
+  h8_aec_sci3_t aec_sci3;
   h8_wdt_t wdt;
-  h8_byte_t unknown[0x08];
+  h8_byte_t unknown2[0x08];
   h8_adc_t adc;
-  h8_byte_t unimplemented2[0x40];
+  h8_byte_t unimplemented[0x40];
 } h8_io2_t;
 
 #define H8_MEMORY_REGION_IO1 0xF020

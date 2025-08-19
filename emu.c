@@ -2899,9 +2899,9 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io1.tw.grd.h.u = 0xFF;
   system->vmem.parts.io1.tw.grd.l.u = 0xFF;
 
-  system->vmem.parts.io2.sci3.scr3.raw.u = B11000000;
-  system->vmem.parts.io2.sci3.brr3.u = 0xFF;
-  system->vmem.parts.io2.sci3.tdr3.u = 0xFF;
+  system->vmem.parts.io2.aec_sci3.scr3.raw.u = B11000000;
+  system->vmem.parts.io2.aec_sci3.brr3.u = 0xFF;
+  system->vmem.parts.io2.aec_sci3.tdr3.u = 0xFF;
 
   system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b0wi = 1;
@@ -3272,6 +3272,11 @@ void h8_test_shift(void)
   printf("Shift tests passed!\n");
 }
 
+/**
+ * Tests to ensure the size of the memory map does not exceed a 16-bit address
+ * space, that memory regions are of the expected size, and that select CPU
+ * registers are in the expected locations.
+ */
 void h8_test_size(void)
 {
   h8_system_t system;
@@ -3282,15 +3287,20 @@ void h8_test_size(void)
     H8_TEST_FAIL(2)
   if (sizeof(system.vmem) != 0x10000)
     H8_TEST_FAIL(3)
-  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO1] != (void*)&system.vmem.parts.io1)
+  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO1] !=
+      (void*)&system.vmem.parts.io1)
     H8_TEST_FAIL(4)
-  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO2] != (void*)&system.vmem.parts.io2)
+  if ((void*)&system.vmem.raw[H8_MEMORY_REGION_IO2] !=
+      (void*)&system.vmem.parts.io2)
     H8_TEST_FAIL(5)
-  if ((void*)&system.vmem.raw[0xff98] != (void*)&system.vmem.parts.io2.sci3.smr3)
+  if ((void*)&system.vmem.raw[H8_REG_IRCR] !=
+      (void*)&system.vmem.parts.io2.aec_sci3.ircr)
     H8_TEST_FAIL(6)
-  if ((void*)&system.vmem.raw[0xffb0] != (void*)&system.vmem.parts.io2.wdt.tmwd)
+  if ((void*)&system.vmem.raw[0xffb0] !=
+      (void*)&system.vmem.parts.io2.wdt.tmwd)
     H8_TEST_FAIL(7)
-  if ((void*)&system.vmem.raw[0xffbe] != (void*)&system.vmem.parts.io2.adc.amr)
+  if ((void*)&system.vmem.raw[0xffbe] !=
+      (void*)&system.vmem.parts.io2.adc.amr)
     H8_TEST_FAIL(8)
 
   printf("Size test passed!\n");

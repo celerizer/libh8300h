@@ -41,30 +41,6 @@ typedef union
 
 typedef union
 {
-  H8_BITFIELD_3
-  (
-    /**
-     * Reserved
-     * These bits are always read as 0 and cannot be modified.
-     */
-    h8_u8 reserved : 4,
-
-    /**
-     * IrDA Clock Select (unimplemented)
-     */
-    h8_u8 clock_select : 3,
-
-    /**
-     * IrDA Enable
-     * Selects whether the SCI3 I/O pins function as the SCI3 or IrDA.
-     */
-    h8_u8 enable : 1
-  ) flags;
-  h8_byte_t raw;
-} h8_ircr_t;
-
-typedef union
-{
   H8_BITFIELD_6
   (
     /**
@@ -89,9 +65,49 @@ typedef union
   ) flags;
   h8_byte_t raw;
 } h8_scr3_t;
+#define H8_REG_SCR3 0xFF9A
+
+typedef union
+{
+  H8_BITFIELD_3
+  (
+    /**
+     * Reserved
+     * These bits are always read as 0 and cannot be modified.
+     */
+    h8_u8 reserved : 4,
+
+    /**
+     * IrDA Clock Select (unimplemented)
+     */
+    h8_u8 clock_select : 3,
+
+    /**
+     * IrDA Enable
+     * Selects whether the SCI3 I/O pins function as the SCI3 or IrDA.
+     */
+    h8_u8 enable : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_ircr_t;
+#define H8_REG_IRCR 0xFFA7
 
 typedef struct
 {
+  h8_word_be_t ecpwcr;
+  h8_word_be_t ecpwdr;
+
+  h8_byte_t unknown1;
+
+  h8_byte_t spcr;
+
+  h8_byte_t aegsr;
+  h8_byte_t unknown2;
+  h8_byte_t eccr;
+  h8_byte_t eccsr;
+  h8_byte_t ech;
+  h8_byte_t ecl;
+
   h8_byte_t smr3;
   h8_byte_t brr3;
   h8_scr3_t scr3;
@@ -99,10 +115,10 @@ typedef struct
   h8_byte_t ssr3;
   h8_byte_t rdr3;
   h8_byte_t semr;
-  h8_byte_t unknown1[8];
+  h8_byte_t unknown3[8];
   h8_ircr_t ircr;
-  h8_byte_t unknown2[8];
-} h8_sci3_t;
+  h8_byte_t unknown4[8];
+} h8_aec_sci3_t;
 
 typedef union
 {
@@ -202,6 +218,7 @@ typedef union h8_ssmr_t
   ) flags;
   h8_byte_t raw;
 } h8_ssmr_t;
+#define H8_REG_SSMR 0xF0E2
 
 typedef union
 {
@@ -218,6 +235,7 @@ typedef union
   ) flags;
   h8_byte_t raw;
 } h8_sser_t;
+#define H8_REG_SSER 0xF0E3
 
 typedef union h8_sssr_t
 {
@@ -245,6 +263,7 @@ typedef union h8_sssr_t
   ) flags;
   h8_byte_t raw;
 } h8_sssr_t;
+#define H8_REG_SSSR 0xF0E4
 
 /** @todo Where is SSTRSR? */
 typedef struct
