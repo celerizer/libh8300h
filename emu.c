@@ -1469,7 +1469,7 @@ H8_OP(op01)
         h8_u8 ers = system->dbus.bl;
 
         h8_fetch(system);
-        if (ers)
+        if (!ers)
           /** MOV.L ERs, @aa:16 */
           rs_md_l(system, *rd_l(system, ers), system->dbus.bits.u, mov_l);
         else
