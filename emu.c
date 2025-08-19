@@ -74,7 +74,7 @@ type add_##name(h8_system_t *system, type dst, const type src) \
 { \
   type result; \
   result.i = dst.i + src.i; \
-  system->cpu.ccr.flags.c = result.u < src.u; \
+  system->cpu.ccr.flags.c = result.u < dst.u; \
   ccr_zn(system, result.i); \
   ccr_v(system, dst.i, src.i, result.i); \
   system->cpu.ccr.flags.h = (result.u & (1 << hcbit)) != (dst.u & (1 << hcbit)); \
@@ -1089,7 +1089,7 @@ void addx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   h8_byte_t result;
 
   result.i = dst->i + src.i + system->cpu.ccr.flags.c;
-  system->cpu.ccr.flags.c = result.u < src.u; \
+  system->cpu.ccr.flags.c = result.u < dst->u;
   system->cpu.ccr.flags.v = ((dst->i > 0 && src.i > 0 && result.i < 0) ||
                             (dst->i < 0 && src.i < 0 && result.i > 0));
   system->cpu.ccr.flags.n = result.i < 0;
@@ -1109,7 +1109,7 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   h8_byte_t result;
 
   result.i = dst->i - src.i - system->cpu.ccr.flags.c;
-  system->cpu.ccr.flags.c = result.u < src.u; \
+  system->cpu.ccr.flags.c = result.u < src.u;
   system->cpu.ccr.flags.v = ((dst->i > 0 && src.i > 0 && result.i < 0) ||
                             (dst->i < 0 && src.i < 0 && result.i > 0));
   system->cpu.ccr.flags.n = result.i < 0;
