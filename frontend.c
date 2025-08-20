@@ -34,7 +34,7 @@ static h8_network_ctx_t *fe_ctx = NULL;
 
 h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
 {
-  int result;
+  int result, err;
 
 #ifdef _WIN32
   WSADATA wsadata;
@@ -62,9 +62,9 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
   {
 #ifdef _WIN32
     WSACleanup();
-    int err = WSAGetLastError();
+    err = WSAGetLastError();
 #else
-    int err = errno;
+    err = errno;
 #endif
     snprintf(ctx->error_message, sizeof(ctx->error_message),
              "Socket creation failed: %d", err);
@@ -78,7 +78,7 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
     struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(ctx->port);
+    addr.sin_port = htons((unsigned short)ctx->port);
     addr.sin_addr.s_addr = inet_addr(ctx->ip);
 
     if (addr.sin_addr.s_addr == INADDR_NONE)
@@ -106,9 +106,9 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
         ctx->socket = NULL;
   #ifdef _WIN32
         WSACleanup();
-        int err = WSAGetLastError();
+        err = WSAGetLastError();
   #else
-        int err = errno;
+        err = errno;
   #endif
         snprintf(ctx->error_message, sizeof(ctx->error_message),
                 "Server bind failed: %d", err);
@@ -125,9 +125,9 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
         ctx->socket = NULL;
   #ifdef _WIN32
         WSACleanup();
-        int err = WSAGetLastError();
+        err = WSAGetLastError();
   #else
-        int err = errno;
+        err = errno;
   #endif
         snprintf(ctx->error_message, sizeof(ctx->error_message),
                 "Server listen failed: %d", err);
@@ -146,9 +146,9 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
         ctx->socket = NULL;
   #ifdef _WIN32
         WSACleanup();
-        int err = WSAGetLastError();
+        err = WSAGetLastError();
   #else
-        int err = errno;
+        err = errno;
   #endif
         snprintf(ctx->error_message, sizeof(ctx->error_message),
                 "Client connect failed: %d", err);
@@ -168,18 +168,19 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
 
 h8_bool h8_fe_network_transmit(const void *data, unsigned size)
 {
-  if (!fe_ctx || !H8_SOCKET_VALID(fe_ctx->socket) || !data || size == 0)
+  size_t total_sent = 0;
+  const char *buffer = (const char*)data;
+
+  if (!fe_ctx)
+    return FALSE;
+  else if (!H8_SOCKET_VALID(fe_ctx->socket) || !data || size == 0)
   {
     snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
              "Invalid transmit parameters");
     fe_ctx->error = H8_NETWORK_ERROR_TRANSMIT;
     return FALSE;
   }
-
-  size_t total_sent = 0;
-  const char *buffer = (const char*)data;
-
-  while (total_sent < size)
+  else while (total_sent < size)
   {
 #ifdef _WIN32
     int sent = send(fe_ctx->socket->handle, buffer + total_sent, (int)(size - total_sent), 0);
@@ -199,7 +200,7 @@ h8_bool h8_fe_network_transmit(const void *data, unsigned size)
       return FALSE;
     }
 
-    total_sent += sent;
+    total_sent += (size_t)sent;
   }
 
   return TRUE;
@@ -207,18 +208,19 @@ h8_bool h8_fe_network_transmit(const void *data, unsigned size)
 
 unsigned h8_fe_network_receive(void *buffer, unsigned size)
 {
-  if (!fe_ctx || !H8_SOCKET_VALID(fe_ctx->socket) || !buffer)
+  size_t total_received = 0;
+  char *buf = (char*)buffer;
+
+  if (!fe_ctx)
+    return 0;
+  else if (!H8_SOCKET_VALID(fe_ctx->socket) || !buffer)
   {
     snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
              "Invalid receive parameters");
     fe_ctx->error = H8_NETWORK_ERROR_RECEIVE;
-    return FALSE;
+    return 0;
   }
-
-  size_t total_received = 0;
-  char *buf = (char *)buffer;
-
-  if (size == 0)
+  else if (size == 0)
   {
     char peek_buf[4096];
 #ifdef _WIN32
@@ -270,7 +272,7 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
       return FALSE;
     }
 
-    total_received += received;
+    total_received += (size_t)received;
   }
 
   return TRUE;
