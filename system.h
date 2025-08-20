@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "device.h"
+#include "ir.h"
 #include "registers.h"
 #include "rtc.h"
 #include "types.h"
@@ -284,6 +285,8 @@ typedef struct h8_system_t
   H8_OUT_T io_write[0x160];
 
   h8_device_t devices[H8_DEVICES_MAX];
+
+  h8_ir_t ir;
 
   /** The number of devices initialized within `devices` */
   unsigned device_count;

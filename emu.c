@@ -547,6 +547,72 @@ H8_OUT(adsro)
   *byte = adsr.raw;
 }
 
+H8_IN(ssr3i)
+{
+  h8_ssr3_t *ssr3 = (h8_ssr3_t*)byte;
+
+  /* TDRE is frozen at zero when TE is disabled */
+  if (!system->vmem.parts.io2.aec_sci3.scr3.flags.te)
+    ssr3->flags.tdre = 1;
+
+  /* If RE is enabled, check for data from frontend here to set status bit */
+  if (system->vmem.parts.io2.aec_sci3.scr3.flags.re && !ssr3->flags.rdrf)
+  {
+    if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
+      ssr3->flags.rdrf = h8_ir_in(&system->ir,
+                                  &system->vmem.parts.io2.aec_sci3.rdr3);
+    if (ssr3->flags.rdrf)
+      h8_log(H8_LOG_WARN, H8_LOG_IR, "IR receive: %02X",
+             system->vmem.parts.io2.aec_sci3.rdr3.u);
+  }
+}
+
+H8_OUT(ssr3o)
+{
+  h8_ssr3_t *dst = (h8_ssr3_t*)byte;
+  h8_ssr3_t src;
+
+  src.raw = value;
+  if (system->vmem.parts.io2.aec_sci3.scr3.flags.te)
+  {
+    if (!src.flags.tdre)
+    {
+      if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
+        h8_ir_transmit(&system->ir);
+      else
+        h8_log(H8_LOG_WARN, H8_LOG_CPU, "Unimplemented SCI3 transmit!");
+      src.flags.tdre = 1;
+    }
+  }
+  *dst = src;
+}
+
+H8_IN(rdr3i)
+{
+  if (system->vmem.parts.io2.aec_sci3.scr3.flags.re)
+    system->vmem.parts.io2.aec_sci3.ssr3.flags.rdrf = 0;
+}
+
+H8_OUT(tdr3o)
+{
+  if (system->vmem.parts.io2.aec_sci3.scr3.flags.te)
+  {
+    if (system->vmem.parts.io2.aec_sci3.ssr3.flags.tdre)
+    {
+      if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
+        h8_ir_out(&system->ir, value);
+      else
+        h8_log(H8_LOG_WARN, H8_LOG_CPU, "Unimplemented SCI3 transmit!");
+      h8_log(H8_LOG_WARN, H8_LOG_IR, "IR transmit: %02X", value.u);
+      system->vmem.parts.io2.aec_sci3.ssr3.flags.tdre = 0;
+      system->vmem.parts.io2.aec_sci3.ssr3.flags.tend = 0;
+    }
+  }
+  else
+    h8_log(H8_LOG_WARN, H8_LOG_CPU, "TDR written but transmit disabled!");
+  *byte = value;
+}
+
 static H8_IN_T reg_ins[0x160] =
 {
   /* IO region 1 (0xF020) */
@@ -599,7 +665,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFF90 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, ssr3i, rdr3i, NULL, NULL,
   /* 0xFFA0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -672,7 +738,7 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFF90 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, tdr3o, ssr3o, NULL, NULL, NULL,
   /* 0xFFA0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,

@@ -64,8 +64,183 @@ typedef union
     h8_u8 reserved3 : 2
   ) flags;
   h8_byte_t raw;
+} h8_spcr_t;
+#define H8_REG_SPCR 0xFF91
+
+typedef union
+{
+  H8_BITFIELD_8
+  (
+    /**
+     * Clock Enable 0 (CKE0)
+     * Selects the clock source.
+     * Asynchronous mode:
+     *   0: Internal baud rate generator (SCK3 pin as I/O)
+     *   1: Internal baud rate generator (outputs bit rate clock on SCK3)
+     * Clock synchronous mode:
+     *   0: Internal clock (SCK3 as clock output)
+     *   1: External clock (SCK3 as clock input)
+     */
+    h8_u8 cke0 : 1,
+
+    /**
+     * Clock Enable 1 (CKE1)
+     * See CKE0 for description.
+     */
+    h8_u8 cke1 : 1,
+
+    /**
+     * Transmit End Interrupt Enable (TEIE)
+     * 1: TEI3 interrupt request enabled
+     * TEI3 can be released by clearing TDRE and TEND in SSR, or by clearing TEIE
+     */
+    h8_u8 teie : 1,
+
+    /**
+     * Reserved (MPIE)
+     */
+    h8_u8 mpi : 1,
+
+    /**
+     * Receive Enable (RE)
+     * 1: Reception enabled
+     * Clearing RE does not affect RDRF, FER, PER, OER in SSR
+     */
+    h8_u8 re : 1,
+
+    /**
+     * Transmit Enable (TE)
+     * 1: Transmission enabled
+     * When 0, TDRE bit in SSR is fixed at 1
+     */
+    h8_u8 te : 1,
+
+    /**
+     * Receive Interrupt Enable (RIE)
+     * 1: RXI3 and ERI3 interrupt requests enabled
+     * Can be released by clearing RDRF or FER, PER, OER or RIE itself
+     */
+    h8_u8 rie : 1,
+
+    /**
+     * Transmit Interrupt Enable (TIE)
+     * 1: TXI3 interrupt request enabled
+     * Can be released by clearing TDRE or TI bit
+     */
+    h8_u8 tie : 1
+  ) flags;
+  h8_byte_t raw;
 } h8_scr3_t;
 #define H8_REG_SCR3 0xFF9A
+
+#define H8_REG_TDR3 0xFF9B
+
+typedef union
+{
+  H8_BITFIELD_8
+  (
+    /**
+     * Reserved
+     * The write value should always be 0.
+     */
+    h8_u8 mpbt : 1,
+
+    /**
+     * Reserved
+     * This bit is always read as 0 and cannot be modified.
+     */
+    h8_u8 mpbr : 1,
+
+    /**
+     * Transmit End (TEND)
+     * [Setting conditions]
+     *   - When the TE bit in SCR is 0
+     *   - When TDRE = 1 at transmission of the last bit of a 1-byte serial
+     *     transmit character
+     * [Clearing conditions]
+     *   - When 0 is written to TDRE after reading TDRE = 1
+     *   - When the transmit data is written to TDR
+     */
+    h8_u8 tend : 1,
+
+    /**
+     * Parity Error (PER)
+     * [Setting condition]
+     *   - When a parity error is generated during reception
+     * [Clearing condition]
+     *   - When 0 is written to PER after reading PER = 1
+     *
+     * Notes:
+     *   - Receive data with a parity error is still transferred to RDR,
+     *     but RDRF is not set.
+     *   - Reception cannot continue with PER = 1.
+     *   - In clock synchronous mode, neither transmission nor reception
+     *     is possible when PER = 1.
+     */
+    h8_u8 per : 1,
+
+    /**
+     * Framing Error (FER)
+     * [Setting condition]
+     *   - When a framing error occurs in reception
+     * [Clearing condition]
+     *   - When 0 is written to FER after reading FER = 1
+     *
+     * Notes:
+     *   - In 2-stop-bit mode, only the first stop bit is checked.
+     *   - On a framing error, data is transferred to RDR, but RDRF is not set.
+     *   - Reception cannot continue with FER = 1.
+     *   - In clock synchronous mode, neither transmission nor reception
+     *     is possible with FER = 1.
+     */
+    h8_u8 fer : 1,
+
+    /**
+     * Overrun Error (OER)
+     * [Setting condition]
+     *   - When an overrun error occurs in reception
+     * [Clearing condition]
+     *   - When 0 is written to OER after reading OER = 1
+     *
+     * Notes:
+     *   - RDR retains data from before the overrun.
+     *   - Newly received data is lost.
+     *   - Reception cannot continue with OER = 1.
+     *   - In clock synchronous mode, transmission cannot continue either.
+     */
+    h8_u8 oer : 1,
+
+    /**
+     * Receive Data Register Full (RDRF)
+     * [Setting condition]
+     *   - When serial reception ends normally and data is moved
+     *     from RSR to RDR
+     * [Clearing conditions]
+     *   - When 0 is written to RDRF after reading RDRF = 1
+     *   - When data is read from RDR
+     *
+     * Notes:
+     *   - If data reception completes while RDRF = 1,
+     *     an overrun error (OER) occurs and new data is lost.
+     */
+    h8_u8 rdrf : 1,
+
+    /**
+     * Transmit Data Register Empty (TDRE)
+     * [Setting conditions]
+     *   - When the TE bit in SCR is 0
+     *   - When data is transferred from TDR to TSR
+     * [Clearing conditions]
+     *   - When 0 is written to TDRE after reading TDRE = 1
+     *   - When new transmit data is written to TDR
+     */
+    h8_u8 tdre : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_ssr3_t;
+#define H8_REG_SSR3 0xFF9C
+
+#define H8_REG_RDR3 0xFF9D
 
 typedef union
 {
@@ -99,7 +274,7 @@ typedef struct
 
   h8_byte_t unknown1;
 
-  h8_byte_t spcr;
+  h8_spcr_t spcr;
 
   h8_byte_t aegsr;
   h8_byte_t unknown2;
@@ -112,7 +287,7 @@ typedef struct
   h8_byte_t brr3;
   h8_scr3_t scr3;
   h8_byte_t tdr3;
-  h8_byte_t ssr3;
+  h8_ssr3_t ssr3;
   h8_byte_t rdr3;
   h8_byte_t semr;
   h8_byte_t unknown3[8];
