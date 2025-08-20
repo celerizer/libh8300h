@@ -9,6 +9,7 @@
 #include "devices/generic_adc.h"
 #include "devices/lcd.h"
 #include "devices/led.h"
+#include "logger.h"
 #include "system.h"
 #include "types.h"
 
@@ -213,6 +214,12 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
       preset = &h8_systems[2];
       break;
     default:
+      return FALSE;
+    }
+
+    if (preset->system != id)
+    {
+      h8_log(H8_LOG_ERROR, H8_LOG_CPU, "ID does not match preset!");
       return FALSE;
     }
 
