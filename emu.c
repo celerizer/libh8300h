@@ -794,6 +794,9 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
   /** @todo Hack: keep sleep mode off */
   system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
 
+  /* NTR-027 hack */
+  /* system->vmem.raw[0xFB8C].u = 0x13; */
+
   if (in)
     in(system, byte);
 
