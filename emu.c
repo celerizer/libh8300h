@@ -2971,6 +2971,7 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io2.aec_sci3.scr3.raw.u = B11000000;
   system->vmem.parts.io2.aec_sci3.brr3.u = 0xFF;
   system->vmem.parts.io2.aec_sci3.tdr3.u = 0xFF;
+  system->vmem.parts.io2.aec_sci3.ssr3.raw.u = 0x84;
 
   system->vmem.parts.io2.wdt.tmwd.flags.reserved = B1111;
   system->vmem.parts.io2.wdt.tcsrwd1.flags.b0wi = 1;
