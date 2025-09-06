@@ -551,7 +551,7 @@ H8_IN(ssr3i)
 {
   h8_ssr3_t *ssr3 = (h8_ssr3_t*)byte;
 
-  /* TDRE is frozen at zero when TE is disabled */
+  /* TDRE is frozen to be set when TE is disabled */
   if (!system->vmem.parts.io2.aec_sci3.scr3.flags.te)
     ssr3->flags.tdre = 1;
 
