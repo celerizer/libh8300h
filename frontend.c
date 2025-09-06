@@ -11,7 +11,7 @@
   typedef SOCKET h8_socket_raw_t;
   #define H8_INVALID_SOCKET INVALID_SOCKET
   #define H8_CLOSESOCKET(s) closesocket((s)->handle)
-  #define H8_SOCKET_VALID(s) ((s)->handle != INVALID_SOCKET)
+  #define H8_SOCKET_VALID(s) ((s) && (s)->handle != INVALID_SOCKET)
 #else
   #include <unistd.h>
   #include <errno.h>
@@ -30,7 +30,7 @@ struct h8_socket_s
   h8_socket_raw_t handle;
 };
 
-static h8_network_ctx_t *fe_ctx = NULL;
+static h8_network_ctx_t fe_ctx = { NULL, "", 0, 0, 0, "" };
 
 h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
 {
@@ -151,7 +151,7 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
         err = errno;
   #endif
         snprintf(ctx->error_message, sizeof(ctx->error_message),
-                "Client connect failed: %d", err);
+                 "Client connect failed: %d", err);
         ctx->error = H8_NETWORK_ERROR_CONNECT;
 
         return FALSE;
@@ -160,7 +160,7 @@ h8_bool h8_fe_network_init(h8_network_ctx_t *ctx)
   }
   ctx->error = H8_NETWORK_ERROR_NONE;
   ctx->error_message[0] = '\0';
-  fe_ctx = ctx;
+  memcpy(&fe_ctx, ctx, sizeof(h8_network_ctx_t));
 
   return TRUE;
 }
@@ -171,21 +171,21 @@ h8_bool h8_fe_network_transmit(const void *data, unsigned size)
   size_t total_sent = 0;
   const char *buffer = (const char*)data;
 
-  if (!fe_ctx)
+  if (!fe_ctx.socket)
     return FALSE;
-  else if (!H8_SOCKET_VALID(fe_ctx->socket) || !data || size == 0)
+  else if (!H8_SOCKET_VALID(fe_ctx.socket) || !data || size == 0)
   {
-    snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+    snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
              "Invalid transmit parameters");
-    fe_ctx->error = H8_NETWORK_ERROR_TRANSMIT;
+    fe_ctx.error = H8_NETWORK_ERROR_TRANSMIT;
     return FALSE;
   }
   else while (total_sent < size)
   {
 #ifdef _WIN32
-    int sent = send(fe_ctx->socket->handle, buffer + total_sent, (int)(size - total_sent), 0);
+    int sent = send(fe_ctx.socket->handle, buffer + total_sent, (int)(size - total_sent), 0);
 #else
-    ssize_t sent = send(fe_ctx->socket->handle, buffer + total_sent, size - total_sent, 0);
+    ssize_t sent = send(fe_ctx.socket->handle, buffer + total_sent, size - total_sent, 0);
 #endif
     if (sent <= 0)
     {
@@ -194,9 +194,9 @@ h8_bool h8_fe_network_transmit(const void *data, unsigned size)
 #else
       int err = errno;
 #endif
-      snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+      snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
                "Send failed after %zu bytes: %d", total_sent, err);
-      fe_ctx->error = H8_NETWORK_ERROR_TRANSMIT;
+      fe_ctx.error = H8_NETWORK_ERROR_TRANSMIT;
       return FALSE;
     }
 
@@ -211,22 +211,22 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
   size_t total_received = 0;
   char *buf = (char*)buffer;
 
-  if (!fe_ctx)
+  if (!fe_ctx.socket)
     return 0;
-  else if (!H8_SOCKET_VALID(fe_ctx->socket) || !buffer)
+  else if (!H8_SOCKET_VALID(fe_ctx.socket) || !buffer)
   {
-    snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+    snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
              "Invalid receive parameters");
-    fe_ctx->error = H8_NETWORK_ERROR_RECEIVE;
+    fe_ctx.error = H8_NETWORK_ERROR_RECEIVE;
     return 0;
   }
   else if (size == 0)
   {
     char peek_buf[4096];
 #ifdef _WIN32
-    int available = recv(fe_ctx->socket->handle, peek_buf, sizeof(peek_buf), MSG_PEEK);
+    int available = recv(fe_ctx.socket->handle, peek_buf, sizeof(peek_buf), MSG_PEEK);
 #else
-    ssize_t available = recv(fe_ctx->socket->handle, peek_buf, sizeof(peek_buf), MSG_PEEK);
+    ssize_t available = recv(fe_ctx.socket->handle, peek_buf, sizeof(peek_buf), MSG_PEEK);
 #endif
     if (available <= 0)
     {
@@ -235,9 +235,9 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
 #else
       int err = errno;
 #endif
-      snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+      snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
                "Receive peek failed: %d", err);
-      fe_ctx->error = H8_NETWORK_ERROR_RECEIVE;
+      fe_ctx.error = H8_NETWORK_ERROR_RECEIVE;
       return FALSE;
     }
 
@@ -247,9 +247,9 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
   while (total_received < size)
   {
 #ifdef _WIN32
-    int received = recv(fe_ctx->socket->handle, buf + total_received, (int)(size - total_received), 0);
+    int received = recv(fe_ctx.socket->handle, buf + total_received, (int)(size - total_received), 0);
 #else
-    ssize_t received = recv(fe_ctx->socket->handle, buf + total_received, size - total_received, 0);
+    ssize_t received = recv(fe_ctx.socket->handle, buf + total_received, size - total_received, 0);
 #endif
     if (received <= 0)
     {
@@ -260,15 +260,15 @@ unsigned h8_fe_network_receive(void *buffer, unsigned size)
 #endif
       if (received == 0)
       {
-        snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+        snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
                  "Connection closed by peer after %zu bytes", total_received);
       }
       else
       {
-        snprintf(fe_ctx->error_message, sizeof(fe_ctx->error_message),
+        snprintf(fe_ctx.error_message, sizeof(fe_ctx.error_message),
                  "Receive failed after %zu bytes: %d", total_received, err);
       }
-      fe_ctx->error = H8_NETWORK_ERROR_RECEIVE;
+      fe_ctx.error = H8_NETWORK_ERROR_RECEIVE;
       return FALSE;
     }
 
