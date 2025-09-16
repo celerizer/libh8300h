@@ -2624,11 +2624,41 @@ H8_OP(op77)
 
 H8_OP(op78)
 {
-  /** @todo */
+  h8_instruction_t curr = system->dbus;
+  h8_long_t address;
+  unsigned r1, r2;
+
   h8_fetch(system);
-  h8_fetch(system);
-  h8_fetch(system);
-  H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+  address = h8_peek_l(system, system->cpu.pc);
+  system->cpu.pc += 4;
+  r1 = curr.bh;
+  r2 = system->dbus.bl;
+
+  switch (system->dbus.a.u)
+  {
+  case 0x6A:
+    if (system->dbus.bh == 0x2)
+      /** MOV.B @(d:24, ERs), Rd */
+      ms_rd_b(system, erd24(system, r1, address.i), rd_b(system, r2), mov_b);
+    else if (system->dbus.bh == 0xA)
+      /** MOV.B Rs, @(d:24, ERd) */
+      rs_md_b(system, *rd_b(system, r2), erd24(system, r1, address.i), mov_b);
+    else
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    break;
+  case 0x6B:
+    if (system->dbus.bh == 0x2)
+      /** MOV.W @(d:24, ERs), Rd */
+      ms_rd_w(system, erd24(system, r1, address.i), rd_w(system, r2), mov_w);
+    else if (system->dbus.bh == 0xA)
+      /** MOV.W Rs, @(d:24, ERd) */
+      rs_md_w(system, *rd_w(system, r2), erd24(system, r1, address.i), mov_w);
+    else
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    break;
+  default:
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+  }
 }
 
 H8_OP(op79)
@@ -2991,7 +3021,7 @@ static H8_OP_T funcs[256] =
   op60, op61, op62, op63, op64, op65, op66, op67,
   op68, op69, op6a, op6b, op6c, op6d, op6e, op6f,
   op70, op71, op72, op73, NULL, NULL, NULL, op77,
-  NULL, op79, op7a, NULL, NULL, op7d, op7e, op7f,
+  op78, op79, op7a, NULL, NULL, op7d, op7e, op7f,
   op80, op81, op82, op83, op84, op85, op86, op87,
   op88, op89, op8a, op8b, op8c, op8d, op8e, op8f,
   op90, op91, op92, op93, op94, op95, op96, op97,
