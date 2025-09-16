@@ -1141,18 +1141,6 @@ H8_RS_MD(b, h8_byte_t)
 H8_RS_MD(w, h8_word_t)
 H8_RS_MD(l, h8_long_t)
 
-#define H8_MS_MD(name, type) \
-static void ms_md_##name(h8_system_t *system, unsigned ms, unsigned md, \
-                         type(*action)(h8_system_t*, type, const type)) \
-{ \
-  type ms_val = h8_read_##name(system, ms); \
-  type md_val = h8_peek_##name(system, md); \
-  h8_write_##name(system, md, action(system, md_val, ms_val)); \
-}
-H8_MS_MD(b, h8_byte_t)
-H8_MS_MD(w, h8_word_t)
-H8_MS_MD(l, h8_long_t)
-
 void addx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
 {
   h8_byte_t result;
