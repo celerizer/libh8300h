@@ -1325,6 +1325,72 @@ H8_NEG_OP(b, h8_byte_t)
 H8_NEG_OP(w, h8_word_t)
 H8_NEG_OP(l, h8_long_t)
 
+static void incb(h8_system_t *system, h8_byte_t *rd)
+{
+  h8_byte_t one;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  one.u = 1;
+  *rd = add_b(system, *rd, one);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
+static void incw(h8_system_t *system, h8_word_t *rd, unsigned n)
+{
+  h8_word_t val;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  val.u = n;
+  *rd = add_w(system, *rd, val);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
+static void incl(h8_system_t *system, h8_long_t *rd, unsigned n)
+{
+  h8_long_t val;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  val.u = n;
+  *rd = add_l(system, *rd, val);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
+static void decb(h8_system_t *system, h8_byte_t *rd)
+{
+  h8_byte_t one;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  one.u = 1;
+  *rd = sub_b(system, *rd, one);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
+static void decw(h8_system_t *system, h8_word_t *rd, unsigned n)
+{
+  h8_word_t val;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  val.u = n;
+  *rd = sub_w(system, *rd, val);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
+static void decl(h8_system_t *system, h8_long_t *rd, unsigned n)
+{
+  h8_long_t val;
+  h8_u8 prev_h = system->cpu.ccr.flags.h;
+  h8_u8 prev_c = system->cpu.ccr.flags.c;
+  val.u = n;
+  *rd = sub_l(system, *rd, val);
+  system->cpu.ccr.flags.h = prev_h;
+  system->cpu.ccr.flags.c = prev_c;
+}
+
 /** @todo Hacky */
 #define H8_CMP_OP(name, type) \
 type cmp_##name(h8_system_t *system, type dst, const type src) \
@@ -1689,10 +1755,7 @@ H8_OP(op0a)
   if (system->dbus.bh == 0x00)
   {
     /** INC.B Rd */
-    h8_byte_t b;
-
-    b.i = 1;
-    rs_rd_b(system, b, rd_b(system, system->dbus.bl), add_b);
+    incb(system, rd_b(system, system->dbus.bl));
   }
   else if (system->dbus.bh & B1000)
     /** ADD.L ERs, ERd */
@@ -1703,9 +1766,6 @@ H8_OP(op0a)
 
 H8_OP(op0b)
 {
-  h8_long_t l;
-  h8_word_t w;
-
   switch (system->dbus.bh)
   {
   case 0x0:
@@ -1714,13 +1774,11 @@ H8_OP(op0b)
     break;
   case 0x5:
     /** INC.W #1, Rd */
-    w.u = 1;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), add_w);
+    incw(system, rd_w(system, system->dbus.bl), 1);
     break;
   case 0x7:
     /** INC.L #1, ERd */
-    l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), add_l);
+    incl(system, rd_l(system, system->dbus.bl), 1);
     break;
   case 0x8:
     /** @todo Verify ADDS.L #2, ERd */
@@ -1732,13 +1790,11 @@ H8_OP(op0b)
     break;
   case 0xD:
     /** INC.W #2, Rd */
-    w.u = 2;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), add_w);
+    incw(system, rd_w(system, system->dbus.bl), 2);
     break;
   case 0xF:
     /** INC.L #2, ERd */
-    l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), add_l);
+    incl(system, rd_l(system, system->dbus.bl), 2);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1991,10 +2047,7 @@ H8_OP(op1a)
   if (system->dbus.bh == 0x00)
   {
     /** DEC.B Rd */
-    h8_byte_t b;
-
-    b.i = 1;
-    rs_rd_b(system, b, rd_b(system, system->dbus.bl), sub_b);
+    decb(system, rd_b(system, system->dbus.bl));
   }
   else if (system->dbus.bh & B1000)
     /** SUB.L ERs, ERd */
@@ -2005,9 +2058,6 @@ H8_OP(op1a)
 
 H8_OP(op1b)
 {
-  h8_long_t l;
-  h8_word_t w;
-
   switch (system->dbus.bh)
   {
   case 0x0:
@@ -2016,13 +2066,11 @@ H8_OP(op1b)
     break;
   case 0x5:
     /** DEC.W #1, Rd */
-    w.u = 1;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), sub_w);
+    decw(system, rd_w(system, system->dbus.bl), 1);
     break;
   case 0x7:
     /** DEC.L #1, ERd */
-    l.u = 1;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), sub_l);
+    decl(system, rd_l(system, system->dbus.bl), 1);
     break;
   case 0x8:
     /** SUBS.L #2, ERd */
@@ -2034,13 +2082,11 @@ H8_OP(op1b)
     break;
   case 0xD:
     /** DEC.W #2, Rd */
-    w.u = 2;
-    rs_rd_w(system, w, rd_w(system, system->dbus.bl), sub_w);
+    decw(system, rd_w(system, system->dbus.bl), 2);
     break;
   case 0xF:
     /** DEC.L #2, ERd */
-    l.u = 2;
-    rs_rd_l(system, l, rd_l(system, system->dbus.bl), sub_l);
+    decl(system, rd_l(system, system->dbus.bl), 2);
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2560,10 +2606,10 @@ H8_OP(op6e)
   h8_fetch(system);
   if (func.bh & B1000)
     /** MOV.B Rs, @(d:16, ERd) */
-    rs_md_b(system, *rd_b(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), mov_b);
+    rs_md_b(system, *rd_b(system, func.bl), erd16(system, func.bh, system->dbus.bits.i), mov_b);
   else
     /** MOV.B @(d:16, ERs), Rd */
-    ms_rd_b(system, erd16(system, func.bh, system->dbus.bits.u), rd_b(system, func.bl), mov_b);
+    ms_rd_b(system, erd16(system, func.bh, system->dbus.bits.i), rd_b(system, func.bl), mov_b);
 }
 
 H8_OP(op6f)
@@ -2573,10 +2619,10 @@ H8_OP(op6f)
   h8_fetch(system);
   if (func.bh & B1000)
     /** MOV.W Rs, @(d:16, ERd) */
-    rs_md_w(system, *rd_w(system, func.bl), erd16(system, func.bh, system->dbus.bits.u), mov_w);
+    rs_md_w(system, *rd_w(system, func.bl), erd16(system, func.bh, system->dbus.bits.i), mov_w);
   else
     /** MOV.W @(d:16, ERs), Rd */
-    ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.u), rd_w(system, func.bl), mov_w);
+    ms_rd_w(system, erd16(system, func.bh, system->dbus.bits.i), rd_w(system, func.bl), mov_w);
 }
 
 H8_OP(op70)
