@@ -1146,9 +1146,9 @@ void addx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   h8_byte_t result;
 
   result.i = dst->i + src.i + system->cpu.ccr.flags.c;
-  system->cpu.ccr.flags.c = result.u < dst->u;
-  system->cpu.ccr.flags.v = ((dst->i > 0 && src.i > 0 && result.i < 0) ||
-                            (dst->i < 0 && src.i < 0 && result.i > 0));
+  system->cpu.ccr.flags.c = result.u < dst->u || (result.u == dst->u && system->cpu.ccr.flags.c);
+  system->cpu.ccr.flags.v = ((dst->i >= 0 && src.i >= 0 && result.i < 0) ||
+                            (dst->i < 0 && src.i < 0 && result.i >= 0));
   system->cpu.ccr.flags.n = result.i < 0;
 
   /* Retains its previous value when the result is
@@ -1166,9 +1166,9 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   h8_byte_t result;
 
   result.i = dst->i - src.i - system->cpu.ccr.flags.c;
-  system->cpu.ccr.flags.c = result.u < src.u;
-  system->cpu.ccr.flags.v = ((dst->i > 0 && src.i > 0 && result.i < 0) ||
-                            (dst->i < 0 && src.i < 0 && result.i > 0));
+  system->cpu.ccr.flags.c = dst->u < src.u || (dst->u == src.u && system->cpu.ccr.flags.c);
+  system->cpu.ccr.flags.v = ((dst->i >= 0 && src.i < 0 && result.i < 0) ||
+                            (dst->i < 0 && src.i >= 0 && result.i >= 0));
   system->cpu.ccr.flags.n = result.i < 0;
 
   /* Retains its previous value when the result is
