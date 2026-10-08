@@ -354,6 +354,8 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
     }
 
     system->device_count = j;
+
+    return TRUE;
   }
 
   return FALSE;
