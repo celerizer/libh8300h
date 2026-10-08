@@ -2,6 +2,7 @@
 #include "devices/accelerometer.h"
 #include "devices/battery.h"
 #include "devices/bma150.h"
+#include "devices/buzzer.h"
 #include "devices/buttons.h"
 #include "devices/eeprom.h"
 #include "devices/factory_control.h"
@@ -21,11 +22,12 @@ static const h8_system_preset_t h8_systems[] =
   {
     "NTR-027",
     H8_SYSTEM_NTR_027,
+    0, /** @todo Unverified clock */
     { 0x82341b9f, 0 },
     {
-      { H8_DEVICE_ACCELEROMETER_X, 0, h8_generic_adrr_get },
-      { H8_DEVICE_ACCELEROMETER_Y, 1, h8_generic_adrr_get },
-      { H8_DEVICE_BATTERY, 2, h8_generic_adrr_max },
+      { H8_DEVICE_BATTERY, 1, h8_battery_adrr },
+      { H8_DEVICE_ACCELEROMETER_X, 4, h8_generic_adrr_get },
+      { H8_DEVICE_ACCELEROMETER_Y, 5, h8_generic_adrr_get },
       { ADC_END }
     },
     {
@@ -40,7 +42,7 @@ static const h8_system_preset_t h8_systems[] =
         H8_DEVICE_LED,
         H8_HOOKUP_PORT_8,
         { NULL },
-        { h8_led_on_out, h8_led_color_out, NULL }
+        { h8_led_red_out, h8_led_green_out, NULL }
       },
 
       {
@@ -64,6 +66,7 @@ static const h8_system_preset_t h8_systems[] =
   {
     "NTR-031",
     H8_SYSTEM_NTR_031,
+    0, /** @todo Unverified clock */
     { 0x64b40d8d /* earlier */, 0x9321792f /* later */, 0 },
     {
       { ADC_END }
@@ -96,9 +99,10 @@ static const h8_system_preset_t h8_systems[] =
   {
     "NTR-032",
     H8_SYSTEM_NTR_032,
+    3686400,
     { 0xd4a05446, 0 },
     {
-      { H8_DEVICE_BATTERY, 3, h8_generic_adrr_max },
+      { H8_DEVICE_BATTERY, 3, h8_battery_adrr },
       { ADC_END }
     },
     {
@@ -130,10 +134,17 @@ static const h8_system_preset_t h8_systems[] =
         { NULL }
       },
 
+      {
+        H8_DEVICE_BUZZER,
+        H8_HOOKUP_PORT_8,
+        { NULL },
+        { h8_buzzer_pin_0_out, h8_buzzer_pin_1_out, NULL }
+      },
+
       { PDR_END }
     }
   },
-  { NULL, H8_SYSTEM_INVALID, { 0 }, { { ADC_END } }, { { PDR_END } } }
+  { NULL, H8_SYSTEM_INVALID, 0, { 0 }, { { ADC_END } }, { { PDR_END } } }
 };
 
 h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
@@ -164,7 +175,7 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
       device->init = h8_bma150_init;
       break;
     case H8_DEVICE_BUZZER:
-      device->init = NULL; /** @todo */
+      device->init = h8_buzzer_init;
       break;
     case H8_DEVICE_EEPROM_64K:
       device->init = h8_eeprom_init_64k;
@@ -222,6 +233,8 @@ h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
       h8_log(H8_LOG_ERROR, H8_LOG_CPU, "ID does not match preset!");
       return FALSE;
     }
+
+    system->clock = preset->clock ? preset->clock : H8_CLOCK_DEFAULT;
 
     /* Setup devices attached to the A/DC */
     for (i = 0; i < H8_HOOKUP_MAX; i++)

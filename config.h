@@ -43,6 +43,21 @@
 #define H8_TESTS 1
 #endif
 
+#ifndef H8_CLOCK_DEFAULT
+/**
+ * The system clock, in Hz, used when a system preset does not specify one
+ */
+#define H8_CLOCK_DEFAULT 3686400
+#endif
+
+#ifndef H8_CLOCK_SUB
+/**
+ * The watch clock in Hz, provided by the subclock oscillator.
+ * The H8/38602R supports 32.768 kHz or 38.4 kHz crystals.
+ */
+#define H8_CLOCK_SUB 32768
+#endif
+
 #ifndef H8_HAVE_NETWORK_IMPL
 /**
  * Whether or not to use the default network implementation

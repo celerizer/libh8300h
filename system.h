@@ -1,11 +1,17 @@
 #ifndef H8_EMU_H
 #define H8_EMU_H
 
+#include "comparator.h"
 #include "config.h"
 #include "device.h"
+#include "interrupts.h"
 #include "ir.h"
+#include "power.h"
 #include "registers.h"
 #include "rtc.h"
+#include "sci3.h"
+#include "timer_b1.h"
+#include "timer_w.h"
 #include "types.h"
 
 typedef union
@@ -207,10 +213,20 @@ typedef struct
 
 typedef struct
 {
-  h8_byte_t rom[5];
+  /* H'F020 - H'F066: flash memory control and unimplemented registers */
+  h8_byte_t unimplemented1[0x47];
+  /* H'F067 - H'F06F */
   h8_rtc_t rtc;
-  h8_byte_t unimplemented1[0xB3];
+  /* H'F070 - H'F0CF */
+  h8_byte_t unimplemented2[0x60];
+  /* H'F0D0 - H'F0D1: TMB1, then TCB1 (read) / TLB1 (write) */
+  h8_byte_t tmb1;
+  h8_byte_t tcb1;
+  /* H'F0D2 - H'F0DF: comparators and unimplemented registers */
+  h8_byte_t unimplemented3[0x0E];
+  /* H'F0E0 - H'F0EF */
   h8_ssu_t ssu;
+  /* H'F0F0 - H'F0FF */
   h8_tw_t tw;
 } h8_io1_t;
 
@@ -308,8 +324,40 @@ typedef struct h8_system_t
 
   h8_system_adc_t adc[6];
 
-  /** Whether or not SLEEP mode is currently active */
-  h8_bool sleep;
+  /** The system clock in Hz */
+  h8_u32 clock;
+
+  /**
+   * The time taken by the last call to h8_step, in system clock states.
+   * Instructions are counted per Appendix A.3, then converted from the CPU
+   * clock in medium-speed or subactive mode. While the CPU is halted in a
+   * power-down mode, each step lets a short, fixed time pass.
+   */
+  unsigned step_states;
+
+  /** Power-down mode and CPU clock state */
+  h8_power_t power;
+
+  /** Internal state of the RTC */
+  h8_rtc_state_t rtc;
+
+  /** Internal state of Timer B1 */
+  h8_tb1_state_t timer_b1;
+
+  /** Internal state of the comparators */
+  h8_comparator_state_t comparator;
+
+  /** External interrupt pin state */
+  h8_irq_state_t irq;
+
+  /** States left to run in the current h8_run frame; negative on overrun */
+  h8_s32 run_budget;
+
+  /** Internal state of Timer W */
+  h8_tw_state_t timer_w;
+
+  /** Internal state of the SCI3 transmitter */
+  h8_sci3_state_t sci3;
 
 #if H8_PROFILING
   unsigned instructions;
@@ -358,7 +406,8 @@ void h8_init(h8_system_t *system);
 void h8_step(h8_system_t *system);
 
 /**
- * Runs one frame (1/60 of a second) of H8 system state
+ * Runs one frame (1/60 of a second) of H8 system state, measured in CPU states
+ * at the system clock. Any overrun is carried into the next frame.
  */
 void h8_run(h8_system_t *system);
 

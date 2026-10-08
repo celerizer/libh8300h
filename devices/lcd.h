@@ -39,6 +39,15 @@ typedef struct
 
   h8_bool second_write_cmd, second_write_data, second_read;
 
+  /**
+   * Set when the column or page address changes. The next data read is a
+   * dummy that returns the read latch's stale contents.
+   */
+  h8_bool dummy_read;
+
+  /** The last byte read from display RAM */
+  h8_u8 read_latch;
+
   h8_u8 x, y;
 
   /** @todo What is this? */

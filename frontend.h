@@ -41,12 +41,18 @@ typedef struct
  */
 h8_bool h8_fe_network_init(h8_network_ctx_t *ctx);
 
+/**
+ * Requests the frontend to send data to the connected system. Must not block
+ * for long, and must not split the data if it cannot all be sent.
+ * @return FALSE if nothing is connected or the connection failed
+ */
 h8_bool h8_fe_network_transmit(const void *data, unsigned size);
 
 /**
- * Requests the frontend to receive data from the network.
- * @param size The number of bytes to receive, or 0 for no limit
- * @return Number of bytes received
+ * Requests the frontend to receive data from the network without blocking.
+ * Called frequently during emulation.
+ * @param size The maximum number of bytes to receive
+ * @return Number of bytes received, or 0 if none are waiting
  */
 unsigned h8_fe_network_receive(void *data, unsigned size);
 

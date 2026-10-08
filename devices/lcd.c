@@ -20,6 +20,19 @@ static const h8_device_id type = H8_DEVICE_LCD;
  *         |------|------|------|------|
  */
 
+static void h8_lcd_next_column(h8_lcd_t *m_lcd)
+{
+  if (m_lcd->x < B01111111)
+    m_lcd->x++;
+}
+
+static void h8_lcd_address_changed(h8_lcd_t *m_lcd)
+{
+  m_lcd->second_write_data = FALSE;
+  m_lcd->second_read = FALSE;
+  m_lcd->dummy_read = TRUE;
+}
+
 void h8_lcd_read(h8_device_t *device, h8_byte_t *dst)
 {
   h8_lcd_t *m_lcd = device->device;
@@ -29,20 +42,20 @@ void h8_lcd_read(h8_device_t *device, h8_byte_t *dst)
   else if (m_lcd->data_mode)
   {
     /* Data mode read -- retreive raw VRAM bytes */
-    unsigned offset = m_lcd->y * 0x0100 +
-                      m_lcd->x * 2 +
-                      (m_lcd->second_write_data ? 1 : 0);
-
-    dst->u = m_lcd->vram[offset];
-
-    /* If we are retreiving the second byte, increment only the X address */
-    if (m_lcd->second_read)
+    if (m_lcd->dummy_read)
+      m_lcd->dummy_read = FALSE;
+    else if (m_lcd->second_read)
     {
-      m_lcd->x = (m_lcd->x + 1) & B01111111;
+      /* Both bytes of the column were read: move to the next column */
+      h8_lcd_next_column(m_lcd);
       m_lcd->second_read = FALSE;
     }
     else
       m_lcd->second_read = TRUE;
+
+    dst->u = m_lcd->read_latch;
+    m_lcd->read_latch = m_lcd->vram[m_lcd->y * 0x0100 + m_lcd->x * 2 +
+                                    (m_lcd->second_read ? 1 : 0)];
   }
   else
     /* Command mode read -- retreive the status register */
@@ -67,7 +80,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
     /* If we are writing the second byte, increment only the X address */
     if (m_lcd->second_write_data)
     {
-      m_lcd->x = (m_lcd->x + 1) & B01111111;
+      h8_lcd_next_column(m_lcd);
       m_lcd->second_write_data = FALSE;
     }
     else
@@ -108,6 +121,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0x0E:
       case 0x0F:
         m_lcd->x = (m_lcd->x & B01110000) | value.u;
+        h8_lcd_address_changed(m_lcd);
         break;
       /** Set Column Address bit4-6 */
       case 0x10:
@@ -119,6 +133,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0x16:
       case 0x17:
         m_lcd->x = (m_lcd->x & B00001111) | (h8_u8)((value.u & B00000111) << 4);
+        h8_lcd_address_changed(m_lcd);
         break;
       case 0x20:
       case 0x21:
@@ -222,6 +237,7 @@ void h8_lcd_write(h8_device_t *device, h8_byte_t *dst, const h8_byte_t value)
       case 0xBE:
       case 0xBF:
         m_lcd->y = value.u & B00001111;
+        h8_lcd_address_changed(m_lcd);
         break;
       case 0xC0:
       case 0xC1:

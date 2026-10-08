@@ -455,21 +455,312 @@ typedef struct
   h8_byte_t unused3[4];
 } h8_ssu_t;
 
-/** @todo Timer W */
+/**
+ * 10.3.1 Timer Mode Register W (TMRW)
+ * Selects the general register functions and the timer output mode.
+ */
+typedef union
+{
+  H8_BITFIELD_8
+  (
+    /** PWM Mode B: FTIOB outputs PWM instead of output compare */
+    h8_u8 pwmb : 1,
+
+    /** PWM Mode C: FTIOC outputs PWM instead of output compare */
+    h8_u8 pwmc : 1,
+
+    /** PWM Mode D: FTIOD outputs PWM instead of output compare */
+    h8_u8 pwmd : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved1 : 1,
+
+    /** Buffer Operation A: GRC operates as the buffer register for GRA */
+    h8_u8 bufea : 1,
+
+    /** Buffer Operation B: GRD operates as the buffer register for GRB */
+    h8_u8 bufeb : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved2 : 1,
+
+    /** Counter Start: TCNT counts while this bit is 1 */
+    h8_u8 cts : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tmrw_t;
+#define H8_REG_TMRW 0xF0F0
+#define H8_TMRW_RESERVED 0x48
+
+/** Clock sources for TCNT, selected by CKS2 to CKS0 in TCRW */
+typedef enum
+{
+  H8_TW_CLOCK_PHI = 0,
+  H8_TW_CLOCK_PHI_2,
+  H8_TW_CLOCK_PHI_4,
+  H8_TW_CLOCK_PHI_8,
+  H8_TW_CLOCK_PHIW,
+  H8_TW_CLOCK_PHIW_4,
+  H8_TW_CLOCK_PHIW_16,
+  H8_TW_CLOCK_FTCI
+} h8_tw_clock;
+
+/**
+ * 10.3.2 Timer Control Register W (TCRW)
+ * Selects the counter clock source and clearing condition, and sets the timer
+ * output levels. Writing the TOx bits is immediately reflected on the pins.
+ */
+typedef union
+{
+  H8_BITFIELD_6
+  (
+    /** Output level of FTIOA until the first compare match A */
+    h8_u8 toa : 1,
+
+    /** Output level of FTIOB until the first compare match B */
+    h8_u8 tob : 1,
+
+    /** Output level of FTIOC until the first compare match C */
+    h8_u8 toc : 1,
+
+    /** Output level of FTIOD until the first compare match D */
+    h8_u8 tod : 1,
+
+    /** Clock Select, see h8_tw_clock */
+    h8_u8 cks : 3,
+
+    /** Counter Clear: TCNT is cleared by compare match A when set */
+    h8_u8 cclr : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tcrw_t;
+#define H8_REG_TCRW 0xF0F1
+
+/**
+ * 10.3.3 Timer Interrupt Enable Register W (TIERW)
+ * Bits 0 to 3 enable the IMIA to IMID interrupts. They share bit positions
+ * with the IMFA to IMFD flags in TSRW, as do OVIE and OVF.
+ */
+typedef union
+{
+  H8_BITFIELD_6
+  (
+    h8_u8 imiea : 1,
+    h8_u8 imieb : 1,
+    h8_u8 imiec : 1,
+    h8_u8 imied : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved : 3,
+
+    /** Timer Overflow Interrupt Enable */
+    h8_u8 ovie : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tierw_t;
+#define H8_REG_TIERW 0xF0F2
+#define H8_TIERW_RESERVED 0x70
+
+/**
+ * 10.3.4 Timer Status Register W (TSRW)
+ * The flags are set by hardware and can only be cleared by writing 0.
+ */
+typedef union
+{
+  H8_BITFIELD_6
+  (
+    /** Input Capture/Compare Match Flags A to D */
+    h8_u8 imfa : 1,
+    h8_u8 imfb : 1,
+    h8_u8 imfc : 1,
+    h8_u8 imfd : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved : 3,
+
+    /** Timer Overflow Flag: set when TCNT overflows from H'FFFF to H'0000 */
+    h8_u8 ovf : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tsrw_t;
+#define H8_REG_TSRW 0xF0F3
+#define H8_TSRW_RESERVED 0x70
+#define H8_TSRW_FLAGS 0x8F
+
+/**
+ * 10.3.5 / 10.3.6 Timer I/O Control Registers 0 and 1 (TIOR0, TIOR1)
+ * TIOR0 controls GRA (low nibble) and GRB (high nibble); TIOR1 controls GRC
+ * and GRD in the same layout.
+ * With IOx2 clear, IOx1 and IOx0 select the compare match output:
+ *   00: No output, 01: Output 0, 10: Output 1, 11: Toggle output
+ * With IOx2 set, the general register becomes an input capture register.
+ */
+typedef union
+{
+  H8_BITFIELD_6
+  (
+    /** Compare match output select for GRA / GRC */
+    h8_u8 io_lo : 2,
+
+    /** GRA / GRC operates as an input capture register when set */
+    h8_u8 io2_lo : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved1 : 1,
+
+    /** Compare match output select for GRB / GRD */
+    h8_u8 io_hi : 2,
+
+    /** GRB / GRD operates as an input capture register when set */
+    h8_u8 io2_hi : 1,
+
+    /** Always read as 1 */
+    h8_u8 reserved2 : 1
+  ) flags;
+  h8_byte_t raw;
+} h8_tior_t;
+#define H8_REG_TIOR0 0xF0F4
+#define H8_REG_TIOR1 0xF0F5
+#define H8_TIOR_RESERVED 0x88
+
+#define H8_TIOR_OUTPUT_NONE 0
+#define H8_TIOR_OUTPUT_0 1
+#define H8_TIOR_OUTPUT_1 2
+#define H8_TIOR_OUTPUT_TOGGLE 3
+
+/**
+ * Section 10: Timer W
+ * Mapped to F0F0 - F0FF. The 16-bit registers must be accessed as words.
+ */
 typedef struct
 {
-  h8_byte_t tmrw;
-  h8_byte_t tcrw;
-  h8_byte_t tierw;
-  h8_byte_t tsrw;
-  h8_byte_t tior0;
-  h8_byte_t tior1;
+  h8_tmrw_t tmrw;
+  h8_tcrw_t tcrw;
+  h8_tierw_t tierw;
+  h8_tsrw_t tsrw;
+  h8_tior_t tior0;
+  h8_tior_t tior1;
   h8_word_be_t tcnt;
   h8_word_be_t gra;
   h8_word_be_t grb;
   h8_word_be_t grc;
   h8_word_be_t grd;
 } h8_tw_t;
+#define H8_REG_TCNT 0xF0F6
+#define H8_REG_GRA 0xF0F8
+
+/**
+ * 3.4 Interrupt controller registers.
+ * IRR1, IRR2 and RTCFLG flags can only be cleared by writing 0.
+ */
+#define H8_REG_RTCFLG 0xF067
+#define H8_REG_IENR1 0xFFF3
+#define H8_REG_IENR2 0xFFF4
+#define H8_REG_IRR1 0xFFF6
+#define H8_REG_IRR2 0xFFF7
+
+/** IENR1 / IRR1 bits */
+#define H8_IRQ0 0x01
+#define H8_IRQ1 0x02
+#define H8_IRQAEC 0x04
+#define H8_IENRTC 0x80
+
+/** IENR2 / IRR2 bits */
+#define H8_IRQEC 0x01
+#define H8_IRQTB1 0x04
+#define H8_IRQAD 0x40
+
+/** Port data registers shared with Timer W pins */
+#define H8_REG_PDR1 0xFFD4
+#define H8_REG_PDR8 0xFFDB
+
+/**
+ * 3.4.1 Interrupt Edge Select Register (IEGR)
+ * IEG0 and IEG1 select a rising (1) or falling (0) edge for IRQ0 and IRQ1.
+ */
+#define H8_REG_IEGR 0xFFF2
+
+/**
+ * 8.5.2 Port Mode Register B (PMRB)
+ * Selects PB0 and PB1 as the IRQ0 and IRQ1 input pins.
+ */
+#define H8_REG_PMRB 0xFFCA
+#define H8_PMRB_IRQ0 0x01
+#define H8_PMRB_IRQ1 0x02
+
+/**
+ * 8.6.2 Port Function Control Register (PFCR)
+ * IRQ0S1/0 (bits 1-0) and IRQ1S1/0 (bits 3-2) move IRQ0 and IRQ1 to other
+ * pins: 00 for port B, 01 for P92/P93, 10 for P30/P11.
+ */
+#define H8_REG_PFCR 0xF085
+
+/**
+ * 5.1.1 / 5.1.2 System Control Registers 1 and 2 (SYSCR1, SYSCR2)
+ * Select the mode entered by the SLEEP instruction and the CPU clock.
+ */
+#define H8_REG_SYSCR1 0xFFF0
+#define H8_SYSCR1_SSBY 0x80
+#define H8_SYSCR1_STS 0x70
+#define H8_SYSCR1_LSON 0x08
+#define H8_SYSCR1_TMA3 0x04
+#define H8_SYSCR1_MA 0x03
+#define H8_SYSCR1_INITIAL 0x03
+
+#define H8_REG_SYSCR2 0xFFF1
+#define H8_SYSCR2_DTON 0x08
+#define H8_SYSCR2_MSON 0x04
+#define H8_SYSCR2_SA 0x03
+#define H8_SYSCR2_INITIAL 0xF0
+
+/**
+ * 5.1.3 Clock Halt Register 1 (CKSTPR1)
+ * Modules are in standby (halted) while their bit is cleared.
+ */
+#define H8_REG_CKSTPR1 0xFFFA
+#define H8_CKSTPR1_RTCCKSTP 0x01
+#define H8_CKSTPR1_TB1CKSTP 0x04
+#define H8_CKSTPR1_INITIAL 0x03
+
+/**
+ * 9.2 Timer B1: TMB1 selects the clock and auto-reload, and TCB1 (read) and
+ * TLB1 (write) share an address.
+ */
+#define H8_REG_TMB1 0xF0D0
+#define H8_REG_TCB1 0xF0D1
+#define H8_TMB1_RELOAD 0x80
+#define H8_TMB1_RUN 0x40
+#define H8_TMB1_RESERVED 0x38
+#define H8_TMB1_CKS 0x07
+
+/**
+ * 5.1.3 Clock Halt Register 2 (CKSTPR2)
+ * Modules are in standby (halted) while their bit is cleared.
+ */
+#define H8_REG_CKSTPR2 0xFFFB
+#define H8_CKSTPR2_TWCKSTP 0x40
+#define H8_CKSTPR2_COMPCKSTP 0x02
+#define H8_CKSTPR2_INITIAL 0x04
+
+/**
+ * 18.3.1 Compare Control Registers 0, 1 (CMCR0, CMCR1)
+ */
+#define H8_REG_CMCR0 0xF0DC
+#define H8_REG_CMCR1 0xF0DD
+#define H8_CMCR_CME 0x80
+#define H8_CMCR_CMIE 0x40
+#define H8_CMCR_CMR 0x20
+#define H8_CMCR_CMLS 0x10
+#define H8_CMCR_CRS 0x0F
+
+/**
+ * 18.3.2 Compare Data Register (CMDR)
+ */
+#define H8_REG_CMDR 0xF0DE
+#define H8_CMDR_CMF1 0x20
+#define H8_CMDR_CMF0 0x10
+#define H8_CMDR_CDR1 0x02
+#define H8_CMDR_CDR0 0x01
 
 /**
  * 17.3.1 A/D Result Register (ADRR)

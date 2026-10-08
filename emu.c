@@ -132,6 +132,22 @@ static void daa_b(h8_system_t *system, h8_byte_t *dst)
   ccr_zn(system, dst->i);
 }
 
+/**
+ * Decimal adjust after subtraction, using C and H from the preceding SUB,
+ * SUBX or NEG. C is left unchanged.
+ */
+static void das_b(h8_system_t *system, h8_byte_t *dst)
+{
+  h8_u8 adjust = 0;
+
+  if (system->cpu.ccr.flags.h)
+    adjust |= 0x06;
+  if (system->cpu.ccr.flags.c)
+    adjust |= 0x60;
+  dst->u = (h8_u8)(dst->u - adjust);
+  ccr_zn(system, dst->i);
+}
+
 static void extu_w(h8_system_t *system, h8_word_t *dst)
 {
   dst->h.u = 0;
@@ -296,11 +312,15 @@ H8_OUT(pdr1o)
 {
   unsigned i;
 
+  *byte = value;
   for (i = 0; i < 3; i++)
+  {
+    /* P10 is FTIOA, which Timer W can take over */
+    if (i == 0 && h8_tw_drives_pin(system, H8_TW_PIN_A))
+      continue;
     if (system->pdr1_out[i].device && system->pdr1_out[i].func)
       system->pdr1_out[i].func(system->pdr1_out[i].device, (value.u >> i) & 1);
-
-  *byte = value;
+  }
 }
 
 H8_IN(pdr3i)
@@ -350,11 +370,15 @@ H8_OUT(pdr8o)
 {
   unsigned i;
 
+  *byte = value;
   for (i = 0; i < 3; i++)
+  {
+    /* P82 to P84 are FTIOB to FTIOD, which Timer W can take over */
+    if (h8_tw_drives_pin(system, H8_TW_PIN_B + i))
+      continue;
     if (system->pdr8_out[i].device && system->pdr8_out[i].func)
       system->pdr8_out[i].func(system->pdr8_out[i].device, (value.u >> (i + 2)) & 1);
-
-  *byte = value;
+  }
 }
 
 H8_IN(pdr9i)
@@ -480,28 +504,32 @@ H8_OUT(sstdro)
 
 H8_IN(adsri)
 {
-  /** @todo A/DC simply assumes result is done when status is read */
-  system->vmem.parts.io2.adc.adsr.flags.adsf = 0;
+  /** @todo Conversion finishes as soon as it starts, so ADSF reads as 0 */
   *byte = system->vmem.parts.io2.adc.adsr.raw;
 }
 
-static void h8_adc_read(h8_system_t *system)
+/**
+ * 17.4.1: Converts the selected channel, stores the result in ADRR and sets
+ * IRRAD. Channels with nothing connected read as 0.
+ */
+static void h8_adc_convert(h8_system_t *system)
 {
   unsigned channel = system->vmem.parts.io2.adc.amr.flags.ch;
+  h8_word_t result;
 
-  if (channel < H8_ADC_AN0 || channel >= H8_ADC_MAX)
-    return;
-  else
+  result.u = 0;
+  if (channel >= H8_ADC_AN0 && channel < H8_ADC_MAX)
   {
     h8_system_adc_t *adc = &system->adc[channel - H8_ADC_AN0];
-    h8_word_t result;
 
     if (adc->device && adc->func)
       result = adc->func(adc->device);
-
-    system->vmem.parts.io2.adc.adrr.raw.h = result.h;
-    system->vmem.parts.io2.adc.adrr.raw.l = result.l;
   }
+
+  /* Only the upper 10 bits hold the result */
+  system->vmem.parts.io2.adc.adrr.raw.h = result.h;
+  system->vmem.parts.io2.adc.adrr.raw.l.u = result.l.u & 0xC0;
+  system->vmem.raw[H8_REG_IRR2].u |= H8_IRQAD;
 }
 
 H8_OUT(adrrho)
@@ -516,20 +544,9 @@ H8_OUT(adrrlo)
 
 H8_OUT(amro)
 {
-  h8_amr_t *amr = (h8_amr_t*)byte;
-  h8_amr_t new_amr;
+  /* 17.3.2: Bit 7 is reserved and always reads as 0 */
   H8_UNUSED(system);
-
-  new_amr.raw = value;
-
-  /* It seems like channel and other flags are set in separate commands */
-  if (new_amr.flags.ch >= H8_ADC_AN0 && new_amr.flags.ch < H8_ADC_MAX)
-    amr->flags.ch = new_amr.flags.ch;
-  else
-  {
-    amr->flags.cks = new_amr.flags.cks;
-    amr->flags.trge = new_amr.flags.trge;
-  }
+  byte->u = value.u & 0x7F;
 }
 
 H8_OUT(adsro)
@@ -537,80 +554,15 @@ H8_OUT(adsro)
   h8_adsr_t adsr;
 
   adsr.raw = value;
+  adsr.flags.reserved = B00111111;
   if (adsr.flags.adsf)
   {
-    /* Immediately complete A/DC operation upon start */
-    h8_adc_read(system);
+    /* Complete the conversion immediately, which clears ADSF */
+    h8_adc_convert(system);
     adsr.flags.adsf = 0;
   }
 
   *byte = adsr.raw;
-}
-
-H8_IN(ssr3i)
-{
-  h8_ssr3_t *ssr3 = (h8_ssr3_t*)byte;
-
-  /* TDRE is frozen to be set when TE is disabled */
-  if (!system->vmem.parts.io2.aec_sci3.scr3.flags.te)
-    ssr3->flags.tdre = 1;
-
-  /* If RE is enabled, check for data from frontend here to set status bit */
-  if (system->vmem.parts.io2.aec_sci3.scr3.flags.re && !ssr3->flags.rdrf)
-  {
-    if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
-      ssr3->flags.rdrf = h8_ir_in(&system->ir,
-                                  &system->vmem.parts.io2.aec_sci3.rdr3);
-    if (ssr3->flags.rdrf)
-      h8_log(H8_LOG_WARN, H8_LOG_IR, "IR receive: %02X",
-             system->vmem.parts.io2.aec_sci3.rdr3.u);
-  }
-}
-
-H8_OUT(ssr3o)
-{
-  h8_ssr3_t *dst = (h8_ssr3_t*)byte;
-  h8_ssr3_t src;
-
-  src.raw = value;
-  if (system->vmem.parts.io2.aec_sci3.scr3.flags.te)
-  {
-    if (!src.flags.tdre)
-    {
-      if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
-        h8_ir_transmit(&system->ir);
-      else
-        h8_log(H8_LOG_WARN, H8_LOG_CPU, "Unimplemented SCI3 transmit!");
-      src.flags.tdre = 1;
-    }
-  }
-  *dst = src;
-}
-
-H8_IN(rdr3i)
-{
-  if (system->vmem.parts.io2.aec_sci3.scr3.flags.re)
-    system->vmem.parts.io2.aec_sci3.ssr3.flags.rdrf = 0;
-}
-
-H8_OUT(tdr3o)
-{
-  if (system->vmem.parts.io2.aec_sci3.scr3.flags.te)
-  {
-    if (system->vmem.parts.io2.aec_sci3.ssr3.flags.tdre)
-    {
-      if (system->vmem.parts.io2.aec_sci3.ircr.flags.enable)
-        h8_ir_out(&system->ir, value);
-      else
-        h8_log(H8_LOG_WARN, H8_LOG_CPU, "Unimplemented SCI3 transmit!");
-      h8_log(H8_LOG_WARN, H8_LOG_IR, "IR transmit: %02X", value.u);
-      system->vmem.parts.io2.aec_sci3.ssr3.flags.tdre = 0;
-      system->vmem.parts.io2.aec_sci3.ssr3.flags.tend = 0;
-    }
-  }
-  else
-    h8_log(H8_LOG_WARN, H8_LOG_CPU, "TDR written but transmit disabled!");
-  *byte = value;
 }
 
 static H8_IN_T reg_ins[0x160] =
@@ -650,8 +602,8 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xF0D0 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, h8_tb1_tcb1_in, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, h8_comparator_cmdr_in, NULL,
   /* 0xF0E0 */
   NULL, NULL, NULL, NULL, sssri, NULL, NULL, NULL,
   NULL, ssrdri, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -665,7 +617,7 @@ static H8_IN_T reg_ins[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFF90 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, ssr3i, rdr3i, NULL, NULL,
+  NULL, NULL, NULL, NULL, h8_sci3_ssr3_in, h8_sci3_rdr3_in, NULL, NULL,
   /* 0xFFA0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -702,8 +654,8 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xF060 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, h8_interrupt_flag_out,
+  NULL, NULL, NULL, NULL, h8_rtc_rtccr1_out, NULL, NULL, NULL,
   /* 0xF070 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -723,13 +675,14 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xF0D0 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  h8_tb1_tmb1_out, h8_tb1_tlb1_out, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, h8_comparator_cmdr_out, NULL,
   /* 0xF0E0 */
   NULL, NULL, NULL, NULL, sssro, NULL, NULL, NULL,
   NULL, ssrdro, NULL, sstdro, NULL, NULL, NULL, NULL,
   /* 0xF0F0 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  h8_tw_tmrw_out, h8_tw_tcrw_out, h8_tw_tierw_out, h8_tw_tsrw_out,
+  h8_tw_tior_out, h8_tw_tior_out, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 
   /* IO region 2 (0xFF80) */
@@ -738,7 +691,8 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFF90 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-  NULL, NULL, NULL, tdr3o, ssr3o, NULL, NULL, NULL,
+  NULL, NULL, h8_sci3_scr3_out, h8_sci3_tdr3_out, h8_sci3_ssr3_out, NULL,
+  NULL, NULL,
   /* 0xFFA0 */
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -755,7 +709,8 @@ static H8_OUT_T reg_outs[0x160] =
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
   /* 0xFFF0 */
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL, NULL, NULL, h8_interrupt_flag_out,
+  h8_interrupt_flag_out,
   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
@@ -857,9 +812,6 @@ static h8_byte_t h8_byte_in(h8_system_t *system, unsigned address)
   H8_IN_T in = h8_register_in(system, address);
   h8_byte_t *byte = h8_find(system, address);
 
-  /** @todo Hack: keep sleep mode off */
-  system->vmem.raw[0xF7B5].u = (system->vmem.raw[0xF7B5].u | 1) & ~(1 << 4);
-
   /* NTR-027 hack */
   /* system->vmem.raw[0xFB8C].u = 0x13; */
 
@@ -889,14 +841,61 @@ static void h8_byte_out(h8_system_t *system, const unsigned address,
            "Write to invalid address 0x%04X -> 0x%02X", address, value.u);
 }
 
+static h8_bool h8_is_io(const unsigned address)
+{
+  return (address >= H8_MEMORY_REGION_IO1 &&
+          address < H8_MEMORY_REGION_IO1 + sizeof(h8_io1_t)) ||
+         address >= H8_MEMORY_REGION_IO2;
+}
+
+static unsigned h8_byte_states(const unsigned address)
+{
+  const unsigned a = address & 0xFFFF;
+
+  if ((a >= 0xF0E0 && a <= 0xF0EB) || (a >= 0xFF98 && a <= 0xFF9D) ||
+      a == 0xFFA6)
+    return 3;
+  else
+    return 2;
+}
+
+static unsigned h8_word_states(const unsigned address)
+{
+  const unsigned a = address & 0xFFFE;
+
+  /* Timer W TCNT and GRA to GRD, ECPWCR, ECPWDR, and ADRR are 16-bit */
+  if (!h8_is_io(a) || (a >= 0xF0F6 && a <= 0xF0FE) || a == 0xFF8C ||
+      a == 0xFF8E || a == 0xFFBC)
+    return 2;
+  else
+    return h8_byte_states(a) + h8_byte_states(a + 1);
+}
+
+static void h8_count_b(h8_system_t *system, const unsigned address)
+{
+  system->step_states += h8_byte_states(address);
+}
+
+static void h8_count_w(h8_system_t *system, const unsigned address)
+{
+  system->step_states += h8_word_states(address);
+}
+
+static void h8_count_l(h8_system_t *system, const unsigned address)
+{
+  system->step_states += h8_word_states(address) + h8_word_states(address + 2);
+}
+
 static h8_byte_t h8_read_b(h8_system_t *system, const unsigned address)
 {
+  h8_count_b(system, address);
   return h8_byte_in(system, address);
 }
 
 static void h8_write_b(h8_system_t *system, const unsigned address,
                        const h8_byte_t value)
 {
+  h8_count_b(system, address);
   h8_byte_out(system, address, value);
 }
 
@@ -918,6 +917,7 @@ static h8_word_t h8_read_w(h8_system_t *system, unsigned address)
 {
   h8_word_t w;
 
+  h8_count_w(system, address);
   w.h = h8_byte_in(system, address);
   w.l = h8_byte_in(system, address + 1);
 
@@ -929,6 +929,7 @@ static h8_word_t h8_read_w(h8_system_t *system, unsigned address)
  */
 static void h8_write_w(h8_system_t *system, unsigned address, h8_word_t val)
 {
+  h8_count_w(system, address);
   h8_byte_out(system, address, val.h);
   h8_byte_out(system, address + 1, val.l);
 }
@@ -957,6 +958,7 @@ static h8_long_t h8_read_l(h8_system_t *system, const unsigned address)
 {
   h8_long_t l;
 
+  h8_count_l(system, address);
   l.a = h8_byte_in(system, address);
   l.b = h8_byte_in(system, address + 1);
   l.c = h8_byte_in(system, address + 2);
@@ -968,6 +970,7 @@ static h8_long_t h8_read_l(h8_system_t *system, const unsigned address)
 static void h8_write_l(h8_system_t *system, const unsigned address,
                           const h8_long_t val)
 {
+  h8_count_l(system, address);
   h8_byte_out(system, address, val.a);
   h8_byte_out(system, address + 1, val.b);
   h8_byte_out(system, address + 2, val.c);
@@ -1135,6 +1138,8 @@ static void rs_md_##name(h8_system_t *system, const type rs, unsigned md, \
                          type(*action)(h8_system_t*, type, const type)) \
 { \
   type md_val = h8_peek_##name(system, md); \
+  if (action != mov_##name) \
+    h8_count_##name(system, md); \
   h8_write_##name(system, md, action(system, md_val, rs)); \
 }
 H8_RS_MD(b, h8_byte_t)
@@ -1181,17 +1186,18 @@ void subx(h8_system_t *system, h8_byte_t *dst, const h8_byte_t src)
   *dst = result;
 }
 
+/* MULXU multiplies as unsigned values; MULXS below is the signed version */
 h8_word_t mulxu_b(h8_word_t dst, const h8_byte_t src)
 {
   h8_word_t result;
-  result.i = src.i * dst.l.i;
+  result.u = (h8_u16)(src.u * dst.l.u);
   return result;
 }
 
 h8_long_t mulxu_w(h8_long_t dst, const h8_word_t src)
 {
   h8_long_t result;
-  result.i = src.i * dst.l.i;
+  result.u = (h8_u32)src.u * dst.l.u;
   return result;
 }
 
@@ -1402,11 +1408,6 @@ H8_CMP_OP(b, h8_byte_t)
 H8_CMP_OP(w, h8_word_t)
 H8_CMP_OP(l, h8_long_t)
 
-/**
- * Sets a specified bit in a general register or memory operand to 1. The bit
- * number is specified by 3-bit immediate data or the lower three bits of a
- * general register.
- */
 h8_byte_t bset(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
   H8_UNUSED(system);
@@ -1414,11 +1415,6 @@ h8_byte_t bset(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
   return dst;
 }
 
-/**
- * Clears a specified bit in a general register or memory operand to 0. The
- * bit number is specified by 3-bit immediate data or the lower three bits of
- * a general register.
- */
 h8_byte_t bclr(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
   H8_UNUSED(system);
@@ -1426,11 +1422,6 @@ h8_byte_t bclr(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
   return dst;
 }
 
-/**
- * Inverts a specified bit in a general register or memory operand. The bit
- * number is specified by 3-bit immediate data or the lower three bits of a
- * general register.
- */
 h8_byte_t bnot(h8_system_t *system, h8_byte_t dst, const h8_byte_t src)
 {
   H8_UNUSED(system);
@@ -1507,6 +1498,84 @@ void bild(h8_system_t *system, h8_byte_t val, unsigned bit)
   system->cpu.ccr.flags.c = val.u & (1 << (bit & B00000111)) ? 0 : 1;
 }
 
+void bor(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BOR parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c |= val.u & (1 << (bit & B00000111)) ? 1 : 0;
+}
+
+void bior(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BIOR parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c |= val.u & (1 << (bit & B00000111)) ? 0 : 1;
+}
+
+void bxor(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BXOR parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c ^= val.u & (1 << (bit & B00000111)) ? 1 : 0;
+}
+
+void bixor(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BIXOR parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c ^= val.u & (1 << (bit & B00000111)) ? 0 : 1;
+}
+
+void band(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BAND parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c &= val.u & (1 << (bit & B00000111)) ? 1 : 0;
+}
+
+void biand(h8_system_t *system, h8_byte_t val, unsigned bit)
+{
+#if H8_SAFETY
+  if (bit > B0111)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Bad BIAND parameter - %02X at %04X",
+           bit, system->cpu.pc - 2);
+  }
+#endif
+  system->cpu.ccr.flags.c &= val.u & (1 << (bit & B00000111)) ? 0 : 1;
+}
+
 void bsr(h8_system_t *system, signed offset)
 {
 #if H8_SAFETY
@@ -1530,6 +1599,29 @@ void bsr(h8_system_t *system, signed offset)
 }
 
 /**
+ * Performs exception handling for an interrupt or trap (3.6, figure 3.5):
+ * pushes PC and CCR, masks interrupts, and jumps through the vector table.
+ * The pushed PC is the address of the next instruction to execute.
+ */
+static void h8_exception(h8_system_t *system, const unsigned vector)
+{
+  h8_word_t w;
+
+  w.u = (h8_u16)system->cpu.pc;
+  system->cpu.regs[7].er.u -= 2;
+  h8_write_w(system, system->cpu.regs[7].er.u, w);
+
+  /* CCR is saved as a word; the odd byte is ignored on return */
+  w.h = system->cpu.ccr.raw;
+  w.l = system->cpu.ccr.raw;
+  system->cpu.regs[7].er.u -= 2;
+  h8_write_w(system, system->cpu.regs[7].er.u, w);
+
+  system->cpu.ccr.flags.i = 1;
+  system->cpu.pc = h8_read_w(system, vector * 2).u;
+}
+
+/**
  * Reads a 2-byte big-endian value from the address referenced by PC to the
  * data bus, then increments PC by 2.
  */
@@ -1540,6 +1632,25 @@ void h8_fetch(h8_system_t *system)
 #if H8_DEBUG_PRINT_FETCH
   printf("%02X %02X ", system->dbus.a.u, system->dbus.b.u);
 #endif
+}
+
+/**
+ * Fetches the two instruction words holding a 24-bit absolute address or
+ * displacement (H'00 or the sign, then 24 bits), sign-extended to 32 bits.
+ */
+static h8_long_t h8_fetch_24(h8_system_t *system)
+{
+  h8_instruction_t op = system->dbus;
+  h8_long_t value;
+
+  h8_fetch(system);
+  value.h = system->dbus.bits;
+  h8_fetch(system);
+  value.l = system->dbus.bits;
+  value.a.u = (value.b.u & 0x80) ? 0xFF : 0x00;
+  system->dbus = op;
+
+  return value;
 }
 
 /**
@@ -1585,27 +1696,21 @@ H8_OP(op01)
         break;
       }
       case 0x2:
-        H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+        /** MOV.L @aa:24, ERd */
+        ms_rd_l(system, aa24(h8_fetch_24(system)), rd_l(system, system->dbus.bl), mov_l);
         break;
       case 0x8:
       {
+        /** MOV.L ERs, @aa:16 */
         h8_u8 ers = system->dbus.bl;
 
         h8_fetch(system);
-        if (!ers)
-          /** MOV.L ERs, @aa:16 */
-          rs_md_l(system, *rd_l(system, ers), system->dbus.bits.u, mov_l);
-        else
-        {
-          /** STC.W CCR, @aa:16 */
-          h8_word_t w;
-          w.u = system->cpu.ccr.raw.u;
-          h8_write_w(system, system->dbus.bits.u, w);
-        }
+        rs_md_l(system, *rd_l(system, ers), system->dbus.bits.u, mov_l);
         break;
       }
       case 0xA:
-        H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+        /** MOV.L ERs, @aa:24 */
+        rs_md_l(system, *rd_l(system, system->dbus.bl), aa24(h8_fetch_24(system)), mov_l);
         break;
       default:
         H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -1634,33 +1739,108 @@ H8_OP(op01)
       break;
     }
     case 0x78:
-      H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    {
+      h8_u8 ern = system->dbus.bh;
+      h8_long_t disp;
+
+      h8_fetch(system);
+      disp = h8_fetch_24(system);
+      if (system->dbus.a.u != 0x6B || ern & B1000 || system->dbus.bl & B1000)
+        H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+      else if (system->dbus.bh == 0x2)
+        /** MOV.L @(d:24, ERs), ERd */
+        ms_rd_l(system, erd24(system, ern, disp.i), rd_l(system, system->dbus.bl), mov_l);
+      else if (system->dbus.bh == 0xA)
+        /** MOV.L ERs, @(d:24, ERd) */
+        rs_md_l(system, *rd_l(system, system->dbus.bl), erd24(system, ern, disp.i), mov_l);
+      else
+        H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
       break;
+    }
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
     }
     break;
   case 0x40:
-    /** @todo STC.W / LDC.W stuff */
+  {
+    h8_bool store;
+    h8_aptr address;
+    h8_word_t w;
+
     h8_fetch(system);
+    store = (system->dbus.bh & B1000) != 0;
     switch (system->dbus.a.u)
     {
     case 0x69:
-      if (system->dbus.bh & B1000)
-        /** STC.W CCR, @ERd */
-        h8_write_b(system, rd_w(system, system->dbus.bl)->u, system->cpu.ccr.raw);
-      else
-        /** LDC.W @ERs, CCR */
-        system->cpu.ccr.raw = h8_read_b(system, rd_w(system, system->dbus.bl)->u);
+      /** @ERs / @ERd */
+      address = er(system, system->dbus.bh);
       break;
-    default:
-      H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    case 0x6B:
+      if ((system->dbus.bh & B0111) == 0x0)
+      {
+        /** @aa:16 */
+        h8_fetch(system);
+        address = aa16(system->dbus.bits);
+      }
+      else if ((system->dbus.bh & B0111) == 0x2)
+        /** @aa:24 */
+        address = aa24(h8_fetch_24(system));
+      else
+      {
+        H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+        return;
+      }
+      break;
+    case 0x6D:
+      /** @ERs+ / @-ERd */
+      address = store ? erpd_w(system, system->dbus.bh) :
+                        erpi_w(system, system->dbus.bh);
+      break;
+    case 0x6F:
+    {
+      /** @(d:16, ERs) / @(d:16, ERd) */
+      h8_u8 ern = system->dbus.bh;
+
+      h8_fetch(system);
+      address = erd16(system, ern, system->dbus.bits.i);
+      break;
     }
+    case 0x78:
+    {
+      h8_u8 ern = system->dbus.bh;
+      h8_long_t disp;
+
+      h8_fetch(system);
+      disp = h8_fetch_24(system);
+      if (system->dbus.a.u != 0x6B)
+      {
+        H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+        return;
+      }
+      store = (system->dbus.bh & B1000) != 0;
+      address = erd24(system, ern, disp.i);
+      break;
+    }
+    default:
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+      return;
+    }
+
+    if (store)
+    {
+      /** STC.W CCR, <EAd> */
+      w.h = system->cpu.ccr.raw;
+      w.l = system->cpu.ccr.raw;
+      h8_write_w(system, address, w);
+    }
+    else
+      /** LDC.W <EAs>, CCR */
+      system->cpu.ccr.raw = h8_read_w(system, address).h;
     break;
+  }
   case 0x80:
-    /** SLEEP */
-    /** @todo make this actually do something */
-    system->sleep = TRUE;
+    /** SLEEP: enters the power-down mode selected by SYSCR1 and SYSCR2 */
+    h8_power_sleep(system);
     break;
   case 0xC0:
     h8_fetch(system);
@@ -1695,7 +1875,26 @@ H8_OP(op01)
     }
     break;
   case 0xF0:
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    h8_fetch(system);
+    if (system->dbus.bh & B1000 || system->dbus.bl & B1000)
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    else switch (system->dbus.a.u)
+    {
+    case 0x64:
+      /** OR.L ERs, ERd */
+      rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), or_l);
+      break;
+    case 0x65:
+      /** XOR.L ERs, ERd */
+      rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), xor_l);
+      break;
+    case 0x66:
+      /** AND.L ERs, ERd */
+      rs_rd_l(system, *rd_l(system, system->dbus.bh), rd_l(system, system->dbus.bl), and_l);
+      break;
+    default:
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    }
     break;
   default:
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2116,8 +2315,8 @@ H8_OP(op1e)
 H8_OP(op1f)
 {
   if (system->dbus.bh == 0x0)
-    /** @todo DAS.B Rd */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    /** DAS.B Rd */
+    das_b(system, rd_b(system, system->dbus.bl));
   else if (system->dbus.bh & B1000)
     /** CMP.L ERs, ERd */
     rs_rd_l(system, *rd_l(system, system->dbus.bh),
@@ -2298,6 +2497,30 @@ H8_OP(op55)
   bsr(system, system->dbus.b.i);
 }
 
+H8_OP(op56)
+{
+  /** RTE */
+  if (system->dbus.b.u == 0x70)
+  {
+    /* Only high byte of CCR is restored */
+    system->cpu.ccr.raw = h8_read_w(system, system->cpu.regs[7].er.u).h;
+    system->cpu.regs[7].er.u += 2;
+    system->cpu.pc = h8_read_w(system, system->cpu.regs[7].er.u).u;
+    system->cpu.regs[7].er.u += 2;
+  }
+  else
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+}
+
+H8_OP(op57)
+{
+  /** TRAPA #x:2 */
+  if ((system->dbus.b.u & 0xCF) == 0)
+    h8_exception(system, H8_VECTOR_TRAPA0 + (system->dbus.bh & B0011));
+  else
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+}
+
 H8_OP(op58)
 {
   h8_u8 condition = system->dbus.bh;
@@ -2407,8 +2630,8 @@ H8_OP(op5a)
 
 H8_OP(op5b)
 {
-  /** JMP @aa:8 */
-  system->cpu.pc = aa8(system->dbus.b);
+  /** JMP @@aa:8 */
+  system->cpu.pc = h8_read_w(system, system->dbus.b.u).u;
 }
 
 H8_OP(op5c)
@@ -2439,6 +2662,18 @@ H8_OP(op5e)
   sp.u = (h8_u16)system->cpu.pc;
   h8_write_w(system, system->cpu.regs[7].er.u, sp);
   system->cpu.pc = system->dbus.bits.u;
+}
+
+H8_OP(op5f)
+{
+  /** JSR @@aa:8 */
+  h8_word_t sp, target;
+
+  target = h8_read_w(system, system->dbus.b.u);
+  sp.u = (h8_u16)system->cpu.pc;
+  system->cpu.regs[7].er.u -= 2;
+  h8_write_w(system, system->cpu.regs[7].er.u, sp);
+  system->cpu.pc = target.u;
 }
 
 H8_OP(op60)
@@ -2485,10 +2720,15 @@ H8_OP(op66)
 
 H8_OP(op67)
 {
-  if (system->dbus.b.u & 0x80)
-    rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), bist);
+  h8_byte_t immediate;
+
+  immediate.u = system->dbus.bh & B0111;
+  if (system->dbus.bh & B1000)
+    /** BIST #xx:3, Rd */
+    rs_rd_b(system, immediate, rd_b(system, system->dbus.bl), bist);
   else
-    rs_rd_b(system, *rd_b(system, system->dbus.bh), rd_b(system, system->dbus.bl), bst);
+    /** BST #xx:3, Rd */
+    rs_rd_b(system, immediate, rd_b(system, system->dbus.bl), bst);
 }
 
 H8_OP(op68)
@@ -2658,11 +2898,41 @@ H8_OP(op73)
   btst(system, rd_b(system, system->dbus.bl), system->dbus.bh);
 }
 
+H8_OP(op74)
+{
+  if (system->dbus.bh & B1000)
+    /** BIOR #xx:3, Rd */
+    bior(system, *rd_b(system, system->dbus.bl), system->dbus.bh & B0111);
+  else
+    /** BOR #xx:3, Rd */
+    bor(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
+}
+
+H8_OP(op75)
+{
+  if (system->dbus.bh & B1000)
+    /** BIXOR #xx:3, Rd */
+    bixor(system, *rd_b(system, system->dbus.bl), system->dbus.bh & B0111);
+  else
+    /** BXOR #xx:3, Rd */
+    bxor(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
+}
+
+H8_OP(op76)
+{
+  if (system->dbus.bh & B1000)
+    /** BIAND #xx:3, Rd */
+    biand(system, *rd_b(system, system->dbus.bl), system->dbus.bh & B0111);
+  else
+    /** BAND #xx:3, Rd */
+    band(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
+}
+
 H8_OP(op77)
 {
   if (system->dbus.bh & B1000)
     /** BILD #xx:3, Rd */
-    bild(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
+    bild(system, *rd_b(system, system->dbus.bl), system->dbus.bh & B0111);
   else
     /** BLD #xx:3, Rd */
     bld(system, *rd_b(system, system->dbus.bl), system->dbus.bh);
@@ -2671,14 +2941,23 @@ H8_OP(op77)
 H8_OP(op78)
 {
   h8_instruction_t curr = system->dbus;
+  h8_instruction_t op;
   h8_long_t address;
   unsigned r1, r2;
 
   h8_fetch(system);
-  address = h8_peek_l(system, system->cpu.pc);
-  system->cpu.pc += 4;
   r1 = curr.bh;
   r2 = system->dbus.bl;
+  op = system->dbus;
+
+  /* The 24-bit displacement follows as two more instruction words */
+  h8_fetch(system);
+  address.h = system->dbus.bits;
+  h8_fetch(system);
+  address.l = system->dbus.bits;
+  /* Sign-extend from 24 bits */
+  address.a.u = (address.b.u & 0x80) ? 0xFF : 0x00;
+  system->dbus = op;
 
   switch (system->dbus.a.u)
   {
@@ -2798,27 +3077,28 @@ H8_OP(op7d)
     {
     case 0x0:
       /** BSET Rs, @ERd */
-      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bset);
+      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.h), bset);
       break;
     case 0x1:
       /** BNOT Rs, @ERd */
-      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bnot);
+      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.h), bnot);
       break;
     case 0x2:
       /** BCLR Rs, @ERd */
-      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.u), bclr);
+      rs_md_b(system, *rd_b(system, system->dbus.bh), er(system, func.l.h), bclr);
       break;
     case 0x7:
     {
       h8_byte_t immediate;
 
-      immediate.u = system->dbus.bh;
+      /* Bit 3 of the immediate byte selects BIST; the bit number is 0-7 */
+      immediate.u = system->dbus.bh & B0111;
       if (system->dbus.bh & B1000)
         /** BIST #xx:3, @ERd */
-        rs_md_b(system, immediate, er(system, func.l.u), bist);
+        rs_md_b(system, immediate, er(system, func.l.h), bist);
       else
         /** BST #xx:3, @ERd */
-        rs_md_b(system, immediate, er(system, func.l.u), bst);
+        rs_md_b(system, immediate, er(system, func.l.h), bst);
       break;
     }
     default:
@@ -2852,31 +3132,118 @@ H8_OP(op7d)
     H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
 }
 
-H8_OP(op7e)
+H8_OP(op7c)
 {
-  h8_word_t func = system->dbus.bits;
+  h8_u8 erd = system->dbus.bh;
+  h8_byte_t val;
 
   h8_fetch(system);
-  if (system->dbus.ah == 0x6 && system->dbus.al == 0x3)
-    /** BTST? */
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+  if (erd & B1000)
+  {
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    return;
+  }
+  val = h8_read_b(system, er(system, erd));
+  if (system->dbus.a.u == 0x63)
+    /** BTST Rn, @ERd */
+    btst(system, &val, rd_b(system, system->dbus.bh)->u);
   else if (system->dbus.ah == 0x7)
   {
     switch (system->dbus.al)
     {
     case 0x3:
+      /** BTST #xx:3, @ERd */
+      btst(system, &val, system->dbus.bh);
+      break;
     case 0x4:
+      if (system->dbus.bh & B1000)
+        /** BIOR #xx:3, @ERd */
+        bior(system, val, system->dbus.bh & B0111);
+      else
+        /** BOR #xx:3, @ERd */
+        bor(system, val, system->dbus.bh);
+      break;
     case 0x5:
+      if (system->dbus.bh & B1000)
+        /** BIXOR #xx:3, @ERd */
+        bixor(system, val, system->dbus.bh & B0111);
+      else
+        /** BXOR #xx:3, @ERd */
+        bxor(system, val, system->dbus.bh);
+      break;
     case 0x6:
-      H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+      if (system->dbus.bh & B1000)
+        /** BIAND #xx:3, @ERd */
+        biand(system, val, system->dbus.bh & B0111);
+      else
+        /** BAND #xx:3, @ERd */
+        band(system, val, system->dbus.bh);
+      break;
+    case 0x7:
+      if (system->dbus.bh & B1000)
+        /** BILD #xx:3, @ERd */
+        bild(system, val, system->dbus.bh & B0111);
+      else
+        /** BLD #xx:3, @ERd */
+        bld(system, val, system->dbus.bh);
+      break;
+    default:
+      H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+    }
+  }
+  else
+    H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
+}
+
+H8_OP(op7e)
+{
+  h8_byte_t aa = system->dbus.b;
+  h8_byte_t val;
+
+  h8_fetch(system);
+  val = h8_read_b(system, aa8(aa));
+  if (system->dbus.a.u == 0x63)
+    /** BTST Rn, @aa:8 */
+    btst(system, &val, rd_b(system, system->dbus.bh)->u);
+  else if (system->dbus.ah == 0x7)
+  {
+    switch (system->dbus.al)
+    {
+    case 0x3:
+      /** BTST #xx:3, @aa:8 */
+      btst(system, &val, system->dbus.bh);
+      break;
+    case 0x4:
+      if (system->dbus.bh & B1000)
+        /** BIOR #xx:3, @aa:8 */
+        bior(system, val, system->dbus.bh & B0111);
+      else
+        /** BOR #xx:3, @aa:8 */
+        bor(system, val, system->dbus.bh);
+      break;
+    case 0x5:
+      if (system->dbus.bh & B1000)
+        /** BIXOR #xx:3, @aa:8 */
+        bixor(system, val, system->dbus.bh & B0111);
+      else
+        /** BXOR #xx:3, @aa:8 */
+        bxor(system, val, system->dbus.bh);
+      break;
+    case 0x6:
+      if (system->dbus.bh & B1000)
+        /** BIAND #xx:3, @aa:8 */
+        biand(system, val, system->dbus.bh & B0111);
+      else
+        /** BAND #xx:3, @aa:8 */
+        band(system, val, system->dbus.bh);
       break;
     case 0x7:
       if (system->dbus.bh & B1000)
         /** BILD #xx:3, @aa:8 */
-        bild(system, h8_read_b(system, 0xFF00 | func.l.u), system->dbus.bh);
+        bild(system, val, system->dbus.bh & B0111);
       else
         /** BLD #xx:3, @aa:8 */
-        bld(system, h8_read_b(system, 0xFF00 | func.l.u), system->dbus.bh);
+        bld(system, val, system->dbus.bh);
       break;
     default:
       H8_ERROR(H8_DEBUG_MALFORMED_OPCODE)
@@ -2911,7 +3278,8 @@ H8_OP(op7f)
     {
       h8_byte_t immediate;
 
-      immediate.u = system->dbus.bh;
+      /* Bit 3 of the immediate byte selects BIST; the bit number is 0-7 */
+      immediate.u = system->dbus.bh & B0111;
       if (system->dbus.bh & B1000)
         /** BIST #xx:3, @aa:8 */
         rs_md_b(system, immediate, aa8(func.l), bist);
@@ -3023,16 +3391,35 @@ void h8_init(h8_system_t *system)
   system->vmem.parts.io1.ssu.sscrh.flags.solp = 1;
   system->vmem.parts.io1.ssu.sssr.flags.tdre = 1;
 
-  system->vmem.parts.io1.tw.gra.h.u = 0xFF;
-  system->vmem.parts.io1.tw.gra.l.u = 0xFF;
-  system->vmem.parts.io1.tw.grb.h.u = 0xFF;
-  system->vmem.parts.io1.tw.grb.l.u = 0xFF;
-  system->vmem.parts.io1.tw.grc.h.u = 0xFF;
-  system->vmem.parts.io1.tw.grc.l.u = 0xFF;
-  system->vmem.parts.io1.tw.grd.h.u = 0xFF;
-  system->vmem.parts.io1.tw.grd.l.u = 0xFF;
+  h8_tw_init(system);
+  h8_tb1_init(system);
+  h8_comparator_init(system);
+  h8_rtc_init(system);
+  h8_sci3_init(system);
+  h8_ir_init(&system->ir);
+  h8_power_init(system);
 
-  system->vmem.parts.io2.aec_sci3.scr3.raw.u = B11000000;
+  /* 5.1: Power-down mode and module standby settings */
+  system->vmem.raw[H8_REG_SYSCR1].u = H8_SYSCR1_INITIAL;
+  system->vmem.raw[H8_REG_SYSCR2].u = H8_SYSCR2_INITIAL;
+  system->vmem.raw[H8_REG_CKSTPR1].u = H8_CKSTPR1_INITIAL;
+
+  /* 3.4, 8.5.2, 8.6.2: External interrupt pins */
+  system->vmem.raw[H8_REG_IEGR].u = 0;
+  system->vmem.raw[H8_REG_PMRB].u = 0;
+  system->vmem.raw[H8_REG_PFCR].u = 0;
+  system->irq.pin_level[0] = FALSE;
+  system->irq.pin_level[1] = FALSE;
+
+  /* 3.4: All interrupts disabled with no requests pending */
+  system->vmem.raw[H8_REG_IENR1].u = 0;
+  system->vmem.raw[H8_REG_IENR2].u = 0;
+  system->vmem.raw[H8_REG_IRR1].u = 0;
+  system->vmem.raw[H8_REG_IRR2].u = 0;
+  system->vmem.raw[H8_REG_CKSTPR2].u = H8_CKSTPR2_INITIAL;
+
+  /* 14.3.6: SCR3 resets to 0, with all SCI3 interrupt requests disabled */
+  system->vmem.parts.io2.aec_sci3.scr3.raw.u = 0;
   system->vmem.parts.io2.aec_sci3.brr3.u = 0xFF;
   system->vmem.parts.io2.aec_sci3.tdr3.u = 0xFF;
   system->vmem.parts.io2.aec_sci3.ssr3.raw.u = 0x84;
@@ -3046,8 +3433,85 @@ void h8_init(h8_system_t *system)
 
   system->vmem.parts.io2.adc.adsr.flags.reserved = B00111111;
 
+  system->clock = H8_CLOCK_DEFAULT;
+  system->run_budget = 0;
+
   /* Jump to program entrypoint */
   system->cpu.pc = h8_read_w(system, 0).u;
+  system->step_states = 0;
+}
+
+/**
+ * Returns the states an instruction spends beyond the bus accesses the
+ * emulator performs as it executes: prefetching the next instruction after a
+ * branch, and internal operations. Instruction fetches and data accesses are
+ * counted as they happen. See Appendix A.3, table A.4.
+ * Must be called after the first instruction word is fetched.
+ */
+static unsigned h8_extra_states(h8_system_t *system)
+{
+  const h8_instruction_t op = system->dbus;
+
+  switch (op.a.u)
+  {
+  case 0x01:
+  {
+    h8_word_t next = h8_peek_w(system, system->cpu.pc);
+
+    switch (op.b.u)
+    {
+    case 0x00:
+    case 0x40:
+      /* MOV.L, LDC and STC with @ERs+ or @-ERd, including PUSH.L and POP.L */
+      return next.h.u == 0x6D ? 2 : 0;
+    case 0xC0:
+    case 0xD0:
+      /* MULXS and DIVXS: 12 internal states for bytes, 20 for words */
+      return next.h.u & 0x02 ? 20 : 12;
+    default:
+      return 0;
+    }
+  }
+  case 0x50:
+  case 0x51:
+    /* MULXU.B, DIVXU.B */
+    return 12;
+  case 0x52:
+  case 0x53:
+    /* MULXU.W, DIVXU.W */
+    return 20;
+  case 0x54:
+  case 0x56:
+    /* RTS, RTE: prefetch and 2 internal states */
+    return 4;
+  case 0x57:
+    /* TRAPA: prefetch and 4 internal states */
+    return 6;
+  case 0x55:
+  case 0x59:
+  case 0x5D:
+    /* BSR d:8, JMP @ERn, JSR @ERn: prefetch */
+    return 2;
+  case 0x58:
+  case 0x5A:
+  case 0x5C:
+  case 0x5E:
+    /* Bcc d:16, JMP @aa:24, BSR d:16, JSR @aa:24: 2 internal states */
+    return 2;
+  case 0x5B:
+    /* JMP @@aa:8: prefetch and 2 internal states; the address read is counted */
+    return 4;
+  case 0x5F:
+    /* JSR @@aa:8: prefetch; the address read and stack write are counted */
+    return 2;
+  case 0x6C:
+  case 0x6D:
+    /* MOV with @ERs+ or @-ERd, including PUSH.W and POP.W */
+    return 2;
+  default:
+    /* Bcc d:8 always prefetches the next instruction */
+    return op.ah == 0x4 ? 2 : 0;
+  }
 }
 
 static H8_OP_T funcs[256] =
@@ -3062,12 +3526,12 @@ static H8_OP_T funcs[256] =
   op38, op39, op3a, op3b, op3c, op3d, op3e, op3f,
   op40, op41, op42, op43, op44, op45, op46, op47,
   op48, op49, op4a, op4b, op4c, op4d, op4e, op4f,
-  op50, op51, op52, op53, op54, op55, NULL, NULL,
-  op58, op59, op5a, op5b, op5c, op5d, op5e, NULL,
+  op50, op51, op52, op53, op54, op55, op56, op57,
+  op58, op59, op5a, op5b, op5c, op5d, op5e, op5f,
   op60, op61, op62, op63, op64, op65, op66, op67,
   op68, op69, op6a, op6b, op6c, op6d, op6e, op6f,
-  op70, op71, op72, op73, NULL, NULL, NULL, op77,
-  op78, op79, op7a, NULL, NULL, op7d, op7e, op7f,
+  op70, op71, op72, op73, op74, op75, op76, op77,
+  op78, op79, op7a, NULL, op7c, op7d, op7e, op7f,
   op80, op81, op82, op83, op84, op85, op86, op87,
   op88, op89, op8a, op8b, op8c, op8d, op8e, op8f,
   op90, op91, op92, op93, op94, op95, op96, op97,
@@ -3088,37 +3552,123 @@ static H8_OP_T funcs[256] =
 
 void h8_step(h8_system_t *system)
 {
-  H8_OP_T function;
+  h8_power_mode mode = system->power.mode;
+  h8_bool phi_running, sub_running;
+  unsigned vector;
+  unsigned i;
 
   if (system->error_code)
     return;
 
-  /** @todo While unusual, executing out of RAM is not illegal */
-  if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1 ||
-      system->cpu.pc > 0xF020 || system->cpu.pc < 0x0050)
-    H8_ERROR(H8_DEBUG_BAD_PC)
+  system->step_states = 0;
+  system->power.wait_states = 0;
 
-  h8_fetch(system);
+  /* 5.2: External interrupt pins are sampled in every mode */
+  h8_interrupt_pins(system);
 
-  function = funcs[system->dbus.a.u];
+  /**
+   * 3.6: Interrupts are accepted between instructions while the I bit in CCR
+   * is clear. Exception handling takes the place of an instruction.
+   */
+  vector = system->cpu.ccr.flags.i ? 0 : h8_interrupt_pending(system);
 
-  if (function)
-    function(system);
+  if (h8_power_halted(system) && !vector)
+  {
+    /**
+     * 5.2: The CPU stays halted until an enabled interrupt is requested while
+     * the I bit is clear. Let a short time pass for the peripherals, but stop
+     * at the next Timer W event so its output edges land on time.
+     */
+    phi_running = h8_power_phi_running(system);
+    system->step_states = h8_tw_states_until_event(system,
+      h8_power_idle_states(system), phi_running,
+      phi_running || system->power.mode == H8_POWER_SUBSLEEP);
+  }
   else
   {
-    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Undefined opcode - %02X%02X at %04X",
-           system->dbus.a.u, system->dbus.b.u, system->cpu.pc - 2);
-    H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+    if (h8_power_halted(system))
+    {
+      /* The interrupt clears the power-down mode before it is handled */
+      h8_power_wake(system);
+      mode = system->power.mode;
+    }
+
+    if (vector)
+    {
+      h8_exception(system, vector);
+
+      /**
+       * Table 3.4: Saving PC and CCR and the vector fetch are counted as
+       * accesses; add the instruction fetch and internal processing.
+       */
+      system->step_states += 8;
+    }
+    else
+    {
+      H8_OP_T function;
+
+#if H8_SAFETY
+      if (system->cpu.pc > 0xFFFF || system->cpu.pc & 1)
+        H8_ERROR(H8_DEBUG_BAD_PC)
+#endif
+
+      h8_fetch(system);
+      system->step_states += h8_extra_states(system);
+
+      function = funcs[system->dbus.a.u];
+
+      if (function)
+        function(system);
+      else
+      {
+        h8_log(H8_LOG_ERROR, H8_LOG_CPU, "Undefined opcode - %02X%02X at %04X",
+               system->dbus.a.u, system->dbus.b.u, system->cpu.pc - 2);
+        H8_ERROR(H8_DEBUG_UNIMPLEMENTED_OPCODE)
+      }
+
+      if (system->error_code)
+        h8_log(H8_LOG_ERROR, H8_LOG_CPU, "CRITICAL EMULATION ERROR %u at %u",
+               system->error_code, system->error_line);
+
+#if H8_PROFILING
+      system->instructions++;
+#endif
+    }
+
+    /* Convert from the clock the CPU ran on, and add any stabilization wait */
+    system->step_states = h8_power_to_phi(system, mode, system->step_states) +
+                          system->power.wait_states;
   }
 
-  if (system->error_code)
-    h8_log(H8_LOG_ERROR, H8_LOG_CPU, "CRITICAL EMULATION ERROR %u at %u",
-           system->error_code, system->error_line);
+  /* Peripherals and devices run in parallel with the CPU */
+  phi_running = h8_power_phi_running(system);
+  sub_running = h8_power_sub_running(system);
+  for (i = 0; i < system->device_count; i++)
+    if (system->devices[i].step)
+      system->devices[i].step(&system->devices[i], system->step_states,
+                              system->clock);
 
-  system->instructions++;
+  /* Table 5.3: Timer W counts on phiW in subactive and subsleep, not watch */
+  h8_tw_run(system, system->step_states, phi_running,
+            phi_running || system->power.mode == H8_POWER_SUBACTIVE ||
+            system->power.mode == H8_POWER_SUBSLEEP);
+  h8_tb1_run(system, system->step_states, phi_running, sub_running);
+  if (sub_running)
+    h8_rtc_run(system, system->step_states, phi_running);
+  h8_ir_run(system, system->step_states);
+  if (phi_running)
+    h8_sci3_run(system, system->step_states);
 }
 
-void h8_run(h8_system_t *system);
+void h8_run(h8_system_t *system)
+{
+  system->run_budget += (h8_s32)(system->clock / 60);
+  while (system->run_budget > 0 && !system->error_code)
+  {
+    h8_step(system);
+    system->run_budget -= (h8_s32)system->step_states;
+  }
+}
 
 #if H8_TESTS
 
@@ -3503,6 +4053,154 @@ void h8_test_sub(void)
   printf("Subtraction test passed!\n");
 }
 
+/** Copies an instruction stream into memory at an address and points PC at it */
+static void h8_test_load(h8_system_t *system, unsigned address,
+                         const h8_u8 *code, unsigned size)
+{
+  unsigned i;
+
+  for (i = 0; i < size; i++)
+    system->vmem.raw[address + i].u = code[i];
+  system->cpu.pc = address;
+}
+
+void h8_test_multiply(void)
+{
+  h8_word_t w;
+  h8_byte_t b;
+  h8_long_t l;
+
+  /* MULXU.B is unsigned: 0x01 * 0xC0 = 0x00C0, not 0xFFC0 */
+  w.u = 0xC001;
+  b.u = 0xC0;
+  if (mulxu_b(w, b).u != 0x00C0)
+    H8_TEST_FAIL(1)
+
+  /* 0xFF * 0xFF = 0xFE01 */
+  w.u = 0x00FF;
+  b.u = 0xFF;
+  if (mulxu_b(w, b).u != 0xFE01)
+    H8_TEST_FAIL(2)
+
+  /* MULXU.W: 0xFFFF * 0x8000 = 0x7FFF8000 */
+  l.u = 0x1234FFFF;
+  w.u = 0x8000;
+  if (mulxu_w(l, w).u != 0x7FFF8000)
+    H8_TEST_FAIL(3)
+
+  printf("Multiplication test passed!\n");
+}
+
+void h8_test_timer_w(void)
+{
+  static h8_system_t system;
+  h8_tw_t *tw = &system.vmem.parts.io1.tw;
+  h8_byte_t b;
+  unsigned i;
+
+  h8_tw_init(&system);
+  system.clock = H8_CLOCK_DEFAULT;
+  system.vmem.raw[H8_REG_CKSTPR2].u = H8_CKSTPR2_TWCKSTP;
+
+  /* Count on clock, clear on compare match A with GRA = 3: a cycle of 4 */
+  b.u = 0x80;
+  h8_tw_tcrw_out(&system, &tw->tcrw.raw, b);
+  tw->gra.h.u = 0;
+  tw->gra.l.u = 3;
+  b.u = 0x80;
+  h8_tw_tmrw_out(&system, &tw->tmrw.raw, b);
+
+  /* The match is signalled when TCNT is clocked while it equals GRA */
+  h8_tw_run(&system, 3, TRUE, TRUE);
+  if (tw->tcnt.l.u != 3 || tw->tsrw.flags.imfa)
+    H8_TEST_FAIL(1)
+  h8_tw_run(&system, 1, TRUE, TRUE);
+  if (tw->tcnt.l.u != 0 || !tw->tsrw.flags.imfa)
+    H8_TEST_FAIL(2)
+
+  /* TSRW flags are cleared by writing 0, but cannot be set by writing 1 */
+  b.u = 0xFE;
+  h8_tw_tsrw_out(&system, &tw->tsrw.raw, b);
+  if (tw->tsrw.flags.imfa || tw->tsrw.raw.u != H8_TSRW_RESERVED)
+    H8_TEST_FAIL(3)
+  b.u = 0xFF;
+  h8_tw_tsrw_out(&system, &tw->tsrw.raw, b);
+  if (tw->tsrw.raw.u != H8_TSRW_RESERVED)
+    H8_TEST_FAIL(4)
+
+  /* PWM on FTIOB with TOB = 1: high from match A, low from match B */
+  b.u = 0x82;
+  h8_tw_tcrw_out(&system, &tw->tcrw.raw, b);
+  tw->grb.h.u = 0;
+  tw->grb.l.u = 1;
+  b.u = 0x81;
+  h8_tw_tmrw_out(&system, &tw->tmrw.raw, b);
+  tw->tcnt.l.u = 0;
+  if (!system.timer_w.output[H8_TW_PIN_B])
+    H8_TEST_FAIL(5)
+  h8_tw_run(&system, 2, TRUE, TRUE);
+  if (system.timer_w.output[H8_TW_PIN_B])
+    H8_TEST_FAIL(6)
+  h8_tw_run(&system, 2, TRUE, TRUE);
+  if (!system.timer_w.output[H8_TW_PIN_B])
+    H8_TEST_FAIL(7)
+
+  /* With equal period and duty, the output never changes */
+  tw->grb.l.u = 3;
+  for (i = 0; i < 8; i++)
+  {
+    h8_tw_run(&system, 1, TRUE, TRUE);
+    if (!system.timer_w.output[H8_TW_PIN_B])
+      H8_TEST_FAIL(8)
+  }
+
+  printf("Timer W test passed!\n");
+}
+
+void h8_test_interrupt(void)
+{
+  static h8_system_t system;
+  /* NOP; RTE at the handler */
+  static const h8_u8 code[] = { 0x00, 0x00 };
+  static const h8_u8 handler[] = { 0x56, 0x70 };
+  h8_tw_t *tw = &system.vmem.parts.io1.tw;
+
+  h8_tw_init(&system);
+  h8_test_load(&system, 0x0200, handler, sizeof(handler));
+  h8_test_load(&system, 0x0100, code, sizeof(code));
+  system.vmem.raw[H8_VECTOR_TIMER_W * 2].u = 0x02;
+  system.vmem.raw[H8_VECTOR_TIMER_W * 2 + 1].u = 0x00;
+  system.cpu.regs[7].er.u = 0xFF80;
+  system.cpu.ccr.raw.u = 0x85;
+
+  /* Requested and enabled, but masked by the I bit */
+  tw->tsrw.flags.imfa = 1;
+  tw->tierw.flags.imiea = 1;
+  if (h8_interrupt_pending(&system) != H8_VECTOR_TIMER_W)
+    H8_TEST_FAIL(1)
+  h8_step(&system);
+  if (system.cpu.pc != 0x0102)
+    H8_TEST_FAIL(2)
+
+  /* Unmasked: PC and CCR are pushed and the vector is taken */
+  system.cpu.ccr.raw.u = 0x05;
+  system.cpu.pc = 0x0100;
+  h8_step(&system);
+  if (system.cpu.pc != 0x0200 || !system.cpu.ccr.flags.i ||
+      system.cpu.regs[7].er.u != 0xFF7C ||
+      system.vmem.raw[0xFF7C].u != 0x05 || system.vmem.raw[0xFF7E].u != 0x01 ||
+      system.vmem.raw[0xFF7F].u != 0x00)
+    H8_TEST_FAIL(3)
+
+  /* RTE restores CCR and PC */
+  h8_step(&system);
+  if (system.cpu.pc != 0x0100 || system.cpu.ccr.raw.u != 0x05 ||
+      system.cpu.regs[7].er.u != 0xFF80)
+    H8_TEST_FAIL(4)
+
+  printf("Interrupt test passed!\n");
+}
+
 #endif
 
 void h8_test(void)
@@ -3512,8 +4210,11 @@ void h8_test(void)
   h8_test_bit_manip();
   h8_test_bit_order();
   h8_test_division();
+  h8_test_interrupt();
+  h8_test_multiply();
   h8_test_shift();
   h8_test_size();
   h8_test_sub();
+  h8_test_timer_w();
 #endif
 }

@@ -65,8 +65,13 @@ typedef enum
 {
   H8_SYSTEM_INVALID = 0,
 
+  /** Single-button pedometer device (2008) */
   H8_SYSTEM_NTR_027,
+
+  /** On-chip IR communicator for game cartridges (2008-2012) */
   H8_SYSTEM_NTR_031,
+
+  /** Three-button pedometer device with LCD and buzzer (2009) */
   H8_SYSTEM_NTR_032,
 
   H8_SYSTEM_SIZE
@@ -118,6 +123,13 @@ typedef void H8D_OP_SSU_IN_T(struct h8_device_t*, h8_byte_t*);
 typedef void H8D_OP_SSU_OUT_T(struct h8_device_t*, h8_byte_t*, h8_byte_t);
 typedef h8_word_t H8D_OP_ADRR_T(struct h8_device_t*);
 
+/**
+ * The function used to advance a device that tracks time.
+ * @param states The number of CPU states that elapsed in the last step
+ * @param clock The system clock in Hz, to convert states into time
+ */
+typedef void H8D_OP_STEP_T(struct h8_device_t*, unsigned states, h8_u32 clock);
+
 typedef struct h8_device_t
 {
   void *device;
@@ -159,6 +171,12 @@ typedef struct h8_device_t
   H8D_OP_PDR_IN_T *pdr_ins[6];
 
   H8D_OP_PDR_OUT_T *pdr_outs[6];
+
+  /**
+   * A function to be called after every CPU step with the time that elapsed.
+   * If NULL, the device does not track time.
+   */
+  H8D_OP_STEP_T *step;
 
   /**
    * A function to be called to serialize the device state
@@ -205,6 +223,7 @@ typedef struct h8_system_preset_t
 {
   const char *title;
   h8_system_id system;
+  h8_u32 clock;
   unsigned crc32[H8_CRC32_MAX];
   h8_adc_hookup_t adc_hookups[6];
   h8_pdr_hookup_t pdr_hookups[H8_HOOKUP_MAX];
