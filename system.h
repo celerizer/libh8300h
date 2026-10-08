@@ -416,6 +416,12 @@ void h8_run(h8_system_t *system);
  */
 void h8_test(void);
 
+/**
+ * Identifies a known system by the CRC32 of its ROM.
+ * @return The matching system, or H8_SYSTEM_INVALID if it is not recognized
+ */
+h8_system_id h8_system_identify(const h8_u8 *data, unsigned size);
+
 h8_bool h8_system_init(h8_system_t *system, const h8_system_id id);
 
 h8_byte_t h8_peek_b(h8_system_t *system, const unsigned address);

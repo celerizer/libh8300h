@@ -206,6 +206,27 @@ h8_bool h8_device_init(h8_device_t *device, const h8_device_id type)
   return 0;
 }
 
+h8_system_id h8_system_identify(const h8_u8 *data, unsigned size)
+{
+  h8_u32 crc = 0xFFFFFFFF;
+  unsigned i, j;
+
+  for (i = 0; i < size; i++)
+  {
+    crc ^= data[i];
+    for (j = 0; j < 8; j++)
+      crc = (crc >> 1) ^ (0xEDB88320 & -(crc & 1));
+  }
+  crc = ~crc;
+
+  for (i = 0; h8_systems[i].system != H8_SYSTEM_INVALID; i++)
+    for (j = 0; j < H8_CRC32_MAX && h8_systems[i].crc32[j]; j++)
+      if (h8_systems[i].crc32[j] == crc)
+        return h8_systems[i].system;
+
+  return H8_SYSTEM_INVALID;
+}
+
 h8_bool h8_system_init(h8_system_t *system, const h8_system_id id)
 {
   if (system)
